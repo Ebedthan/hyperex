@@ -453,6 +453,8 @@ pub fn process_fa(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+    use tempfile::{tempfile, NamedTempFile};
 
     #[test]
     fn test_primers_to_region_ok() {
@@ -479,10 +481,18 @@ mod tests {
     }
 
     #[test]
-    fn test_complement_ok() {
+    fn test_complement_dna() {
         assert_eq!(
-            to_complement("ATCGATCGATCGATCG", "dna"),
-            String::from("TAGCTAGCTAGCTAGC")
+            to_complement("ATCGATCGATCGATCGRYKBVDH", "dna"),
+            String::from("TAGCTAGCTAGCTAGCYRMVBHD")
+        );
+    }
+
+    #[test]
+    fn test_complement_rna() {
+        assert_eq!(
+            to_complement("AUCGAUCGAUCGAUCGRYKBVDH", "rna"),
+            String::from("UAGCUAGCUAGCUAGCYRMVBHD")
         );
     }
 
@@ -495,13 +505,29 @@ mod tests {
     }
 
     #[test]
-    fn test_from_iupac_to_regex() {
-        assert_eq!(from_iupac_to_regex("ATCGYATCH", "dna"), "ATCG[CT]ATC[ACT]");
+    fn test_from_iupac_to_regex_dna() {
+        assert_eq!(
+            from_iupac_to_regex("SACCWTKMBDVRTCGYATCH", "dna"),
+            "[GC]ACC[AT]T[GT][AC][CGT][AGT][ACG][AG]TCG[CT]ATC[ACT]"
+        );
     }
 
     #[test]
-    fn test_from_iupac_to_regex_2() {
-        assert_eq!(from_iupac_to_regex("GGG.AAA", "dna"), "GGG.AAA");
+    fn test_from_iupac_to_regex_dna2() {
+        assert_eq!(from_iupac_to_regex("GGGNAAA", "dna"), "GGG.AAA");
+    }
+
+    #[test]
+    fn test_from_iupac_to_regex_rna() {
+        assert_eq!(
+            from_iupac_to_regex("SACCWUKMBDVRUCGYAUCH", "rna"),
+            "[GC]ACC[AU]U[GU][AC][CGU][AGU][ACG][AG]UCG[CU]AUC[ACU]"
+        );
+    }
+
+    #[test]
+    fn test_from_iupac_to_regex_rna2() {
+        assert_eq!(from_iupac_to_regex("GGGNAUA", "dna"), "GGG.AUA");
     }
 
     #[test]
@@ -527,5 +553,91 @@ mod tests {
     #[test]
     fn test_sequence_type_err() {
         assert_eq!(sequence_type("ATCXXXRMGU"), None);
+    }
+
+    #[test]
+    fn test_region_to_primer_ok() {
+        assert_eq!(
+            region_to_primer("v1v2").unwrap(),
+            vec![vec!["AGAGTTTGATCMTGGCTCAG", "CYIACTGCTGCCTCCCGTAG"]]
+        );
+        assert_eq!(
+            region_to_primer("v1v3").unwrap(),
+            vec![vec!["AGAGTTTGATCMTGGCTCAG", "ATTACCGCGGCTGCTGG"]]
+        );
+        assert_eq!(
+            region_to_primer("v1v9").unwrap(),
+            vec![vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]]
+        );
+        assert_eq!(
+            region_to_primer("v3v4").unwrap(),
+            vec![vec!["CCTACGGGNGGCWGCAG", "GACTACHVGGGTATCTAATCC"]]
+        );
+        assert_eq!(
+            region_to_primer("v3v5").unwrap(),
+            vec![vec!["CCTACGGGNGGCWGCAG", "CCGTCAATTYMTTTRAGT"]]
+        );
+        assert_eq!(
+            region_to_primer("v4").unwrap(),
+            vec![vec!["GTGCCAGCMGCCGCGGTAA", "GGACTACHVGGGTWTCTAAT"]]
+        );
+        assert_eq!(
+            region_to_primer("v4v5").unwrap(),
+            vec![vec!["GTGYCAGCMGCCGCGGTAA", "CCCCGYCAATTCMTTTRAGT"]]
+        );
+        assert_eq!(
+            region_to_primer("v5v7").unwrap(),
+            vec![vec!["AACMGGATTAGATACCCKG", "ACGTCATCCCCACCTTCC"]]
+        );
+        assert_eq!(
+            region_to_primer("v6v9").unwrap(),
+            vec![vec!["TAAAACTYAAAKGAATTGACGGGG", "TACGGYTACCTTGTTAYGACTT"]]
+        );
+        assert_eq!(
+            region_to_primer("v7v9").unwrap(),
+            vec![vec!["YAACGAGCGCAACCC", "TACGGYTACCTTGTTAYGACTT"]]
+        );
+        assert_eq!(
+            region_to_primer("").unwrap(),
+            vec![
+                vec!["AGAGTTTGATCMTGGCTCAG", "CYIACTGCTGCCTCCCGTAG"],
+                vec!["AGAGTTTGATCMTGGCTCAG", "ATTACCGCGGCTGCTGG"],
+                vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"],
+                vec!["CCTACGGGNGGCWGCAG", "GACTACHVGGGTATCTAATCC"],
+                vec!["CCTACGGGNGGCWGCAG", "CCGTCAATTYMTTTRAGT"],
+                vec!["GTGCCAGCMGCCGCGGTAA", "GGACTACHVGGGTWTCTAAT"],
+                vec!["GTGYCAGCMGCCGCGGTAA", "CCCCGYCAATTCMTTTRAGT"],
+                vec!["AACMGGATTAGATACCCKG", "ACGTCATCCCCACCTTCC"],
+                vec!["TAAAACTYAAAKGAATTGACGGGG", "TACGGYTACCTTGTTAYGACTT"],
+                vec!["YAACGAGCGCAACCC", "TACGGYTACCTTGTTAYGACTT"]
+            ]
+        );
+    }
+
+    #[test]
+    fn test_write_fa_ok() {
+        let record =
+            fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
+        let file = tempfile().expect("Cannot create temp file");
+
+        assert!((write_fa(&file, record)).is_ok());
+    }
+
+    #[test]
+    fn test_write_fa_ok2() {
+        let mut tmpfile =
+            NamedTempFile::new().expect("Cannot create temp file");
+        writeln!(tmpfile, ">id_str desc\nATCGCCG")
+            .expect("Cannot write to tmp file");
+
+        let mut fa_records = fasta::Reader::from_file(tmpfile)
+            .expect("Cannot read file.")
+            .records();
+
+        while let Some(Ok(rec)) = fa_records.next() {
+            assert_eq!(rec.id(), "id_str");
+            assert_eq!(rec.desc(), Some("desc"));
+            assert_eq!(rec.seq(), b"ATCGCCG");
+        }
     }
 }
