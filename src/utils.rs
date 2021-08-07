@@ -363,21 +363,21 @@ pub fn process_fa(
 
     while let Some(Ok(record)) = records.next() {
         let seq = record.seq();
-        if seq.len() <= 1400 {
-            warn!("Sequence length is less than 1400 bp. We may not be able to find some regions");
-        }
         let mut alphabet = "";
         match sequence_type(std::str::from_utf8(seq)?) {
             Some(alp) => {
                 if alp == Alphabet::Dna {
-                    info!("Sequences are DNA");
+                    info!("Sequence type is DNA");
                     alphabet = "dna";
                 } else if alp == Alphabet::Rna {
-                    info!("Sequences are RNA");
+                    info!("Sequence type is RNA");
                     alphabet = "rna";
                 }
             }
             None => error!("Sequence type is not recognized as DNA or RNA"),
+        }
+        if seq.len() <= 1400 {
+            warn!("Sequence length is less than 1400 bp. We may not be able to find some regions");
         }
 
         for primer_pair in primers.iter() {
@@ -491,8 +491,8 @@ mod tests {
     #[test]
     fn test_complement_rna() {
         assert_eq!(
-            to_complement("AUCGAUCGAUCGAUCGRYKBVDH", "rna"),
-            String::from("UAGCUAGCUAGCUAGCYRMVBHD")
+            to_complement("AUCGAUCGAUCGAUCGRYKBVDHM", "rna"),
+            String::from("UAGCUAGCUAGCUAGCYRMVBHDK")
         );
     }
 
@@ -520,14 +520,14 @@ mod tests {
     #[test]
     fn test_from_iupac_to_regex_rna() {
         assert_eq!(
-            from_iupac_to_regex("SACCWUKMBDVRUCGYAUCH", "rna"),
+            from_iupac_to_regex("SACCWUKMBDVRUCGYANUCH", "rna"),
             "[GC]ACC[AU]U[GU][AC][CGU][AGU][ACG][AG]UCG[CU]AUC[ACU]"
         );
     }
 
     #[test]
     fn test_from_iupac_to_regex_rna2() {
-        assert_eq!(from_iupac_to_regex("GGGNAUA", "dna"), "GGG.AUA");
+        assert_eq!(from_iupac_to_regex("GGGNAUA", "rna"), "GGG.AUA");
     }
 
     #[test]

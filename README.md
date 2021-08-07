@@ -3,17 +3,17 @@
 [![CodeCov](https://codecov.io/gh/Ebedthan/hyvrex/branch/main/graph/badge.svg)](https://codecov.io/gh/Ebedthan/hyvrex)
 
 
-```text
-                     _
-                    | |                                              
-                    | |__  _   ___   ___ __ _____  __
-                    | '_ \| | | \ \ / / '__/ _ \ \/ /
-                    | | | | |_| |\ V /| | |  __/>  < 
-                    |_| |_|\__, | \_/ |_|  \___/_/\_\  v0.2.0
-                            __/ |                    
-                           |___/ 
-                
-                   HyperVariable Primer-based Region Extractor
+```
+                             _
+                            | |                                              
+                            | |__  _   ___   ___ __ _____  __
+                            | '_ \| | | \ \ / / '__/ _ \ \/ /
+                            | | | | |_| |\ V /| | |  __/>  < 
+                            |_| |_|\__, | \_/ |_|  \___/_/\_\  v0.3.0
+                                    __/ |                    
+                                   |___/ 
+                        
+                           HyperVariable Primer-based Region Extractor
 ```
 
 ## Introduction
@@ -60,6 +60,7 @@ ARGS:
 ```
 
 ## Requirements
+
 - [Rust](https://rust-lang.org) in stable channel
 - libgz for gz file support
 - liblzma for xz file support
