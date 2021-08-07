@@ -11,15 +11,17 @@ extern crate whoami;
 mod app;
 mod utils;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::crate_version;
-use log::{info, warn};
+use log::info;
 
 use std::env;
-use std::fs;
-use std::path::Path;
+use std::time::Instant;
 
 fn main() -> Result<()> {
+    // Starting up the chrono
+    let startime = Instant::now();
+
     // Define command-line arguments ----------------------------------------
     let matches = app::build_app().get_matches_from(env::args_os());
 
@@ -38,7 +40,6 @@ fn main() -> Result<()> {
         primers = utils::region_to_primer("all")?;
     }
 
-    let force = matches.is_present("force");
     let verbosity: u64 = matches.occurrences_of("verbose");
 
     // Set up program logging -----------------------------------------------
@@ -47,17 +48,23 @@ fn main() -> Result<()> {
     info!("This is hyvrex v{}", crate_version!());
     info!("Written by Anicet Ebou");
     info!("Available at https://github.com/Ebedthan/hyvrex.git");
-    info!("Localtime is {}", chrono::Local::now().format("[%H:%M:%S]"));
+    info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
     info!("You are {}", whoami::username());
     info!("Operating system is {}", whoami::platform());
 
-    // Handling creation of file
-    if force {
-        warn!("Reusing file {}", outfile);
-        fs::remove_file(Path::new(outfile)).with_context(|| format!("Could not remove file '{}'. Do you have the appropriate permission?", outfile))?;
-    }
-
     utils::process_fa(infile, primers, outfile)?;
+
+    // Finishing
+    let duration = startime.elapsed();
+    let y = 60 * 60 * 1000;
+    let hours = duration.as_millis() / y;
+    let minutes = (duration.as_millis() - (hours * y)) / (y / 60);
+    let seconds = (duration.as_millis() - (hours * y) - (minutes * (y / 60))) / 1000;
+    let milliseconds = duration.as_millis() - (hours * y) - (minutes * (y / 60)) - (seconds * 1000);
+    
+    info!("{}", format!("Walltime: {}h:{}m:{}s.{}ms", hours, minutes, seconds, milliseconds));
+    info!("Done getting hypervariable regions");
+    info!("Enjoy. Share. Come back again!");
 
     Ok(())
 }

@@ -68,16 +68,6 @@ pub fn build_app() -> App<'static, 'static> {
                 .validator(already_exists),
         )
         .arg(
-            Arg::with_name("force")
-                .help("Force reuse of default output directory")
-                .long_help(
-                    "Reuse the default output directory (sabreur_out).\n \
-                    This will erase existing directory before creating it.",
-                )
-                .long("force")
-                .takes_value(false),
-        )
-        .arg(
             Arg::with_name("verbose")
                 .long_help("Increases program verbosity each use for up to 3 times")
                 .short("v")
@@ -106,6 +96,6 @@ fn already_exists(filename: String) -> Result<(), String> {
     if !Path::new(&filename).exists() {
         Ok(())
     } else {
-        Err(String::from("Selected file already exists. Please change it using --out option or use --force"))
+        Err(String::from("Selected file already exists. Please change it using --out option"))
     }
 }

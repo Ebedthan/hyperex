@@ -12,6 +12,7 @@ extern crate regex;
 
 use anyhow::{anyhow, Context, Result};
 use bio::io::fasta;
+use fern::colors::ColoredLevelConfig;
 use log::warn;
 use phf::phf_map;
 use regex::Regex;
@@ -21,6 +22,8 @@ use std::fs::OpenOptions;
 use std::io;
 
 pub fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
+    let colors = ColoredLevelConfig::default();
+
     let mut base_config = fern::Dispatch::new();
 
     base_config = match verbosity {
@@ -48,7 +51,7 @@ pub fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
         .chain(fern::log_file("hyvrex.log")?);
 
     let stdout_config = fern::Dispatch::new()
-        .format(|out, message, record| {
+        .format(move |out, message, record| {
             // special format for debug messages coming from our own crate.
             if record.level() > log::LevelFilter::Info
                 && record.target() == "hyvrex"
@@ -60,10 +63,9 @@ pub fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
                 ))
             } else {
                 out.finish(format_args!(
-                    "[{}][{}][{}] {}",
+                    "[{}][{}] {}",
                     chrono::Local::now().format("%H:%M:%S"),
-                    record.target(),
-                    record.level(),
+                    colors.color(record.level()),
                     message
                 ))
             }
@@ -361,7 +363,7 @@ pub fn process_fa(
                         Some(_) => {
                             warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[0]);
                         },
-                        None => warn!("Region {} not found because primers {:#?} was not found in the sequence", region, primer_pair)
+                        None => warn!("Region {} not found because primers {}, {} was not found in the sequence", region, primer_pair[0], primer_pair[1])
                     }
                 }
             }

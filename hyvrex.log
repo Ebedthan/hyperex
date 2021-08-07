@@ -9,3 +9,60 @@
 [2021-08-07][04:58:55][hyvrex::utils][WARN] Region v1v9 not found because primers ["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"] was not found in the sequence
 [2021-08-07][04:58:55][hyvrex::utils][WARN] Region v6v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
 [2021-08-07][04:58:55][hyvrex::utils][WARN] Region v7v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][05:39:45][hyvrex][INFO] This is hyvrex v0.1.0
+[2021-08-07][05:39:45][hyvrex][INFO] Written by Anicet Ebou
+[2021-08-07][05:39:45][hyvrex][INFO] Available at https://github.com/Ebedthan/hyvrex.git
+[2021-08-07][05:39:45][hyvrex][INFO] Localtime is 05:39:45
+[2021-08-07][05:39:45][hyvrex][INFO] You are sinfo
+[2021-08-07][05:39:45][hyvrex][INFO] Operating system is Linux
+[2021-08-07][05:39:45][hyvrex::utils][WARN] Sequence length is less than 1400 bp. We may not be able to find some regions
+[2021-08-07][05:39:45][hyvrex::utils][WARN] Region v1v2 not found because primers [
+    "AGAGTTTGATCMTGGCTCAG",
+    "CYIACTGCTGCCTCCCGTAG",
+] was not found in the sequence
+[2021-08-07][05:39:45][hyvrex::utils][WARN] Region v1v3 not found because primer AGAGTTTGATCMTGGCTCAG was not found in the sequence
+[2021-08-07][05:39:45][hyvrex::utils][WARN] Region v1v9 not found because primers [
+    "AGAGTTTGATCMTGGCTCAG",
+    "TACGGYTACCTTGTTAYGACTT",
+] was not found in the sequence
+[2021-08-07][05:39:45][hyvrex::utils][WARN] Region v6v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][05:39:45][hyvrex::utils][WARN] Region v7v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][05:39:45][hyvrex][INFO] Walltime: 0h:0m:0s.48ms
+[2021-08-07][05:39:45][hyvrex][INFO] Done getting hypervariable regions
+[2021-08-07][05:39:45][hyvrex][INFO] Enjoy. Share. Come back again!
+[2021-08-07][11:28:50][hyvrex][INFO] This is hyvrex v0.1.0
+[2021-08-07][11:28:50][hyvrex][INFO] Written by Anicet Ebou
+[2021-08-07][11:28:50][hyvrex][INFO] Available at https://github.com/Ebedthan/hyvrex.git
+[2021-08-07][11:28:50][hyvrex][INFO] Localtime is 11:28:50
+[2021-08-07][11:28:50][hyvrex][INFO] You are sinfo
+[2021-08-07][11:28:50][hyvrex][INFO] Operating system is Linux
+[2021-08-07][11:28:50][hyvrex::utils][WARN] Sequence length is less than 1400 bp. We may not be able to find some regions
+[2021-08-07][11:28:50][hyvrex::utils][WARN] Region v1v2 not found because primers [
+    "AGAGTTTGATCMTGGCTCAG",
+    "CYIACTGCTGCCTCCCGTAG",
+] was not found in the sequence
+[2021-08-07][11:28:50][hyvrex::utils][WARN] Region v1v3 not found because primer AGAGTTTGATCMTGGCTCAG was not found in the sequence
+[2021-08-07][11:28:50][hyvrex::utils][WARN] Region v1v9 not found because primers [
+    "AGAGTTTGATCMTGGCTCAG",
+    "TACGGYTACCTTGTTAYGACTT",
+] was not found in the sequence
+[2021-08-07][11:28:50][hyvrex::utils][WARN] Region v6v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][11:28:50][hyvrex::utils][WARN] Region v7v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][11:28:50][hyvrex][INFO] Walltime: 0h:0m:0s.60ms
+[2021-08-07][11:28:50][hyvrex][INFO] Done getting hypervariable regions
+[2021-08-07][11:28:50][hyvrex][INFO] Enjoy. Share. Come back again!
+[2021-08-07][11:41:10][hyvrex][INFO] This is hyvrex v0.1.0
+[2021-08-07][11:41:10][hyvrex][INFO] Written by Anicet Ebou
+[2021-08-07][11:41:10][hyvrex][INFO] Available at https://github.com/Ebedthan/hyvrex.git
+[2021-08-07][11:41:10][hyvrex][INFO] Localtime is 11:41:10
+[2021-08-07][11:41:10][hyvrex][INFO] You are sinfo
+[2021-08-07][11:41:10][hyvrex][INFO] Operating system is Linux
+[2021-08-07][11:41:10][hyvrex::utils][WARN] Sequence length is less than 1400 bp. We may not be able to find some regions
+[2021-08-07][11:41:10][hyvrex::utils][WARN] Region v1v2 not found because primers AGAGTTTGATCMTGGCTCAG, CYIACTGCTGCCTCCCGTAG was not found in the sequence
+[2021-08-07][11:41:10][hyvrex::utils][WARN] Region v1v3 not found because primer AGAGTTTGATCMTGGCTCAG was not found in the sequence
+[2021-08-07][11:41:10][hyvrex::utils][WARN] Region v1v9 not found because primers AGAGTTTGATCMTGGCTCAG, TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][11:41:10][hyvrex::utils][WARN] Region v6v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][11:41:10][hyvrex::utils][WARN] Region v7v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][11:41:10][hyvrex][INFO] Walltime: 0h:0m:0s.53ms
+[2021-08-07][11:41:10][hyvrex][INFO] Done getting hypervariable regions
+[2021-08-07][11:41:10][hyvrex][INFO] Enjoy. Share. Come back again!
