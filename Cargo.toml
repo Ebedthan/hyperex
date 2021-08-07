@@ -1,9 +1,9 @@
 [package]
 name = "hyvrex"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
-exclude = ["CODE_OF_CONDUCT.md", "tests/*", "benches/*", ".github/*", ".cargo/*"]
+exclude = ["test/*", ".github/*", ".cargo/*"]
 description = "Hypervariable region primer-based extracted"
 homepage = "https://github.com/Ebedthan/hyvrex"
 readme = "README.md"
@@ -22,9 +22,6 @@ niffler       = "2.3.2"
 phf           = { version = "0.9", features = ["macros"] }
 regex         = "1.5"
 whoami        = "1.1.2"
-
-[dev-dependencies]
-criterion     = "0.3"
 
 [profile.release]
 opt-level       = 3

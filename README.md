@@ -6,9 +6,8 @@
 
 ## Introduction
 
-Hyvrex is a tool that extract hypervariable region from 16S rRNA. 
-Provided with a fasta file, hyvrex search all hypervariable regions 
-in the gene. The gene name can be changed using the --gene option.
+Hyvrex is a tool that extract hypervariable region from 16S/18S/23S rRNA based on supplied primer sequences. 
+Hyvrex have built-in primer sequences for 16S rRNA region that can be specified using their names (with --forward-primer, --reverse-primer) or region names (with --region). The user can also use custom primer with --forward-primer and --reverse-primer options.
 
 
 ## Requirements
@@ -47,6 +46,3 @@ Submit problems or requests to the [Issue Tracker](https://github.com/Ebedthan/h
 
 ## License
 Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
-
-## Authors
-* [Anicet Ebou](https://orcid.org/0000-0003-4005-177X)
