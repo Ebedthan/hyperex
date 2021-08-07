@@ -1,0 +1,11 @@
+[2021-08-07][04:58:55][hyvrex][INFO] This is hyvrex v0.1.0
+[2021-08-07][04:58:55][hyvrex][INFO] Written by Anicet Ebou
+[2021-08-07][04:58:55][hyvrex][INFO] Available at https://github.com/Ebedthan/hyvrex.git
+[2021-08-07][04:58:55][hyvrex][INFO] Localtime is [04:58:55]
+[2021-08-07][04:58:55][hyvrex][INFO] You are sinfo
+[2021-08-07][04:58:55][hyvrex][INFO] Operating system is Linux
+[2021-08-07][04:58:55][hyvrex::utils][WARN] Region v1v2 not found because primers ["AGAGTTTGATCMTGGCTCAG", "CYIACTGCTGCCTCCCGTAG"] was not found in the sequence
+[2021-08-07][04:58:55][hyvrex::utils][WARN] Region v1v3 not found because primer AGAGTTTGATCMTGGCTCAG was not found in the sequence
+[2021-08-07][04:58:55][hyvrex::utils][WARN] Region v1v9 not found because primers ["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"] was not found in the sequence
+[2021-08-07][04:58:55][hyvrex::utils][WARN] Region v6v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence
+[2021-08-07][04:58:55][hyvrex::utils][WARN] Region v7v9 not found because primer TACGGYTACCTTGTTAYGACTT was not found in the sequence

@@ -1,0 +1,40 @@
+[package]
+name = "hyvrex"
+version = "0.1.0"
+authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
+edition = "2018"
+exclude = ["CODE_OF_CONDUCT.md", "tests/*", "benches/*", ".github/*", ".cargo/*"]
+description = "Hypervariable region primer-based extracted"
+homepage = "https://github.com/Ebedthan/hyvrex"
+readme = "README.md"
+license = "MIT"
+categories = ["command-line-utilities"]
+keywords = ["bioinformatics"] 
+
+[dependencies]
+anyhow        = "1.0.40"
+bio           = "0.35"
+chrono        = "0.4"
+clap          = "~2.33"
+fern          = "0.5"
+log           = "0.4"
+niffler       = "2.3.2"
+phf           = { version = "0.9", features = ["macros"] }
+regex         = "1.5"
+whoami        = "1.1.2"
+
+[dev-dependencies]
+criterion     = "0.3"
+
+[profile.release]
+opt-level       = 3
+debug           = true
+overflow-checks = false
+lto             = 'thin'
+panic           = 'abort'
+incremental     = false
+
+[[bin]]
+name = "hyvrex"
+path = "src/main.rs"
+bench = false
