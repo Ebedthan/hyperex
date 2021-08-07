@@ -21,6 +21,19 @@
 Hyvrex (HyperVariable Region EXtractor) is a tool that extract hypervariable region from 16S/18S/23S rRNA based on supplied primer sequences. 
 Hyvrex have built-in primer sequences for 16S rRNA region that can be specified using their names (with `--forward-primer`, `--reverse-primer`) or region names (with `--region`). The user can also use custom primer with `--forward-primer` and `--reverse-primer` options.
 
+## Some examples
+
+```
+# With built-in 16S primer names
+hyvrex -f 27F -r 337R file.fa.gz
+
+# With built-in 16S region names
+hyvrex --region v3v4 file.fa.xz
+
+# With custom primer sequences
+hyvrex -o outfile --forward-primer ATCG --reverse-primer TYAATG file.fa.bz2
+```
+
 ## Command-line arguments
 
 ```
