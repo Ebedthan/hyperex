@@ -233,53 +233,98 @@ fn primers_to_region(primers: Vec<&str>) -> String {
     }
 }
 
-fn from_iupac_to_regex(primer: &str) -> String {
-    let clean_regex: String = primer
-        .chars()
-        .map(|x| match x {
-            'R' => "[AG]".to_string(),
-            'Y' => "[CT]".to_string(),
-            'S' => "[GC]".to_string(),
-            'W' => "[AT]".to_string(),
-            'K' => "[GT]".to_string(),
-            'M' => "[AC]".to_string(),
-            'B' => "[CGT]".to_string(),
-            'D' => "[AGT]".to_string(),
-            'H' => "[ACT]".to_string(),
-            'V' => "[ACG]".to_string(),
-            'N' => ".".to_string(),
-            _ => String::from(x),
-        })
-        .collect();
+fn from_iupac_to_regex(primer: &str, alphabet: &str) -> String {
+    let mut clean_regex = String::new();
+
+    if alphabet == "dna" {
+        clean_regex = primer
+            .chars()
+            .map(|x| match x {
+                'R' => "[AG]".to_string(),
+                'Y' => "[CT]".to_string(),
+                'S' => "[GC]".to_string(),
+                'W' => "[AT]".to_string(),
+                'K' => "[GT]".to_string(),
+                'M' => "[AC]".to_string(),
+                'B' => "[CGT]".to_string(),
+                'D' => "[AGT]".to_string(),
+                'H' => "[ACT]".to_string(),
+                'V' => "[ACG]".to_string(),
+                'N' => ".".to_string(),
+                _ => String::from(x),
+            })
+            .collect();
+    } else if alphabet == "rna" {
+        clean_regex = primer
+            .chars()
+            .map(|x| match x {
+                'R' => "[AG]".to_string(),
+                'Y' => "[CU]".to_string(),
+                'S' => "[GC]".to_string(),
+                'W' => "[AU]".to_string(),
+                'K' => "[GU]".to_string(),
+                'M' => "[AC]".to_string(),
+                'B' => "[CGU]".to_string(),
+                'D' => "[AGU]".to_string(),
+                'H' => "[ACU]".to_string(),
+                'V' => "[ACG]".to_string(),
+                'N' => ".".to_string(),
+                _ => String::from(x),
+            })
+            .collect();
+    }
 
     clean_regex
 }
 
-fn to_complement(primer: &str) -> String {
-    let complement: String = primer
-        .chars()
-        .map(|x| match x {
-            'A' => 'T',
-            'T' => 'A',
-            'C' => 'G',
-            'G' => 'C',
-            'R' => 'Y',
-            'Y' => 'R',
-            'K' => 'M',
-            'M' => 'K',
-            'B' => 'V',
-            'V' => 'B',
-            'D' => 'H',
-            'H' => 'D',
-            _ => x,
-        })
-        .collect();
+fn to_complement(primer: &str, alphabet: &str) -> String {
+    let mut complement = String::new();
+
+    if alphabet == "dna" {
+        complement = primer
+            .chars()
+            .map(|x| match x {
+                'A' => 'T',
+                'T' => 'A',
+                'C' => 'G',
+                'G' => 'C',
+                'R' => 'Y',
+                'Y' => 'R',
+                'K' => 'M',
+                'M' => 'K',
+                'B' => 'V',
+                'V' => 'B',
+                'D' => 'H',
+                'H' => 'D',
+                _ => x,
+            })
+            .collect();
+    } else if alphabet == "rna" {
+        complement = primer
+            .chars()
+            .map(|x| match x {
+                'A' => 'U',
+                'U' => 'A',
+                'C' => 'G',
+                'G' => 'C',
+                'R' => 'Y',
+                'Y' => 'R',
+                'K' => 'M',
+                'M' => 'K',
+                'B' => 'V',
+                'V' => 'B',
+                'D' => 'H',
+                'H' => 'D',
+                _ => x,
+            })
+            .collect();
+    }
 
     complement
 }
 
-fn to_reverse_complement(primer: &str) -> String {
-    let complement = to_complement(primer);
+fn to_reverse_complement(primer: &str, alphabet: &str) -> String {
+    let complement = to_complement(primer, alphabet);
     let reverse_complement = complement.chars().rev().collect();
 
     reverse_complement
@@ -321,20 +366,26 @@ pub fn process_fa(
         if seq.len() <= 1400 {
             warn!("Sequence length is less than 1400 bp. We may not be able to find some regions");
         }
+        let mut alphabet = "";
         match sequence_type(std::str::from_utf8(seq)?) {
-            Some(alphabet) => {
-                if alphabet == Alphabet::Dna {
+            Some(alp) => {
+                if alp == Alphabet::Dna {
                     info!("Sequences are DNA");
-                } else if alphabet == Alphabet::Rna {
+                    alphabet = "dna";
+                } else if alp == Alphabet::Rna {
                     info!("Sequences are RNA");
+                    alphabet = "rna";
                 }
             }
             None => error!("Sequence type is not recognized as DNA or RNA"),
         }
+
         for primer_pair in primers.iter() {
-            let forward_re = Regex::new(&from_iupac_to_regex(primer_pair[0]))?;
+            let forward_re =
+                Regex::new(&from_iupac_to_regex(primer_pair[0], alphabet))?;
             let reverse_re = Regex::new(&from_iupac_to_regex(
-                &to_reverse_complement(primer_pair[1]),
+                &to_reverse_complement(primer_pair[1], alphabet),
+                alphabet,
             ))?;
 
             let region = primers_to_region(primer_pair.to_vec());
@@ -430,7 +481,7 @@ mod tests {
     #[test]
     fn test_complement_ok() {
         assert_eq!(
-            to_complement("ATCGATCGATCGATCG"),
+            to_complement("ATCGATCGATCGATCG", "dna"),
             String::from("TAGCTAGCTAGCTAGC")
         );
     }
@@ -438,19 +489,19 @@ mod tests {
     #[test]
     fn test_reverse_complement() {
         assert_eq!(
-            to_reverse_complement("GTGCCAGCMGCCGCGGTAA"),
+            to_reverse_complement("GTGCCAGCMGCCGCGGTAA", "dna"),
             "TTACCGCGGCKGCTGGCAC"
         );
     }
 
     #[test]
     fn test_from_iupac_to_regex() {
-        assert_eq!(from_iupac_to_regex("ATCGYATCH"), "ATCG[CT]ATC[ACT]");
+        assert_eq!(from_iupac_to_regex("ATCGYATCH", "dna"), "ATCG[CT]ATC[ACT]");
     }
 
     #[test]
     fn test_from_iupac_to_regex_2() {
-        assert_eq!(from_iupac_to_regex("GGG.AAA"), "GGG.AAA");
+        assert_eq!(from_iupac_to_regex("GGG.AAA", "dna"), "GGG.AAA");
     }
 
     #[test]
