@@ -521,7 +521,7 @@ mod tests {
     fn test_from_iupac_to_regex_rna() {
         assert_eq!(
             from_iupac_to_regex("SACCWUKMBDVRUCGYANUCH", "rna"),
-            "[GC]ACC[AU]U[GU][AC][CGU][AGU][ACG][AG]UCG[CU]AUC[ACU]"
+            "[GC]ACC[AU]U[GU][AC][CGU][AGU][ACG][AG]UCG[CU]A.UC[ACU]"
         );
     }
 
