@@ -13,7 +13,7 @@ extern crate regex;
 use anyhow::{anyhow, Context, Result};
 use bio::io::fasta;
 use fern::colors::ColoredLevelConfig;
-use log::warn;
+use log::{error, info, warn};
 use phf::phf_map;
 use regex::Regex;
 
@@ -173,8 +173,6 @@ pub fn region_to_primer(region: &str) -> Result<Vec<Vec<&str>>> {
     }
 }
 
-// read_file function -------------------------------------------------------
-
 /// Get reader and compression format of file
 ///
 /// # Example
@@ -196,8 +194,6 @@ fn read_file(
         anyhow!("Could not detect compression of file '{}'", filename)
     })
 }
-
-// write_to_fa function -----------------------------------------------------
 
 /// Write to provided data to a fasta file in append mode
 ///
@@ -289,6 +285,25 @@ fn to_reverse_complement(primer: &str) -> String {
     reverse_complement
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Alphabet {
+    Dna,
+    Rna,
+}
+
+pub fn sequence_type(sequence: &str) -> Option<Alphabet> {
+    let valid_dna_iupac = "ACGTRYSWKMBDHVN";
+    let valid_rna_iupac = "ACGURYSWKMBDHVN";
+
+    if sequence.chars().all(|x| valid_dna_iupac.contains(x)) {
+        Some(Alphabet::Dna)
+    } else if sequence.chars().all(|x| valid_rna_iupac.contains(x)) {
+        Some(Alphabet::Rna)
+    } else {
+        None
+    }
+}
+
 pub fn process_fa(
     file: &str,
     primers: Vec<Vec<&str>>,
@@ -305,6 +320,16 @@ pub fn process_fa(
         let seq = record.seq();
         if seq.len() <= 1400 {
             warn!("Sequence length is less than 1400 bp. We may not be able to find some regions");
+        }
+        match sequence_type(std::str::from_utf8(seq)?) {
+            Some(alphabet) => {
+                if alphabet == Alphabet::Dna {
+                    info!("Sequences are DNA");
+                } else if alphabet == Alphabet::Rna {
+                    info!("Sequences are RNA");
+                }
+            }
+            None => error!("Sequence type is not recognized as DNA or RNA"),
         }
         for primer_pair in primers.iter() {
             let forward_re = Regex::new(&from_iupac_to_regex(primer_pair[0]))?;
@@ -426,5 +451,30 @@ mod tests {
     #[test]
     fn test_from_iupac_to_regex_2() {
         assert_eq!(from_iupac_to_regex("GGG.AAA"), "GGG.AAA");
+    }
+
+    #[test]
+    fn test_sequence_type_dna_ok() {
+        assert_eq!(sequence_type("ATCGATCGATCG"), Some(Alphabet::Dna));
+    }
+
+    #[test]
+    fn test_sequence_type_dna_iupac_ok() {
+        assert_eq!(sequence_type("ATCGMTGCAATCG"), Some(Alphabet::Dna));
+    }
+
+    #[test]
+    fn test_sequence_type_rna_ok() {
+        assert_eq!(sequence_type("AGCUUUGCA"), Some(Alphabet::Rna));
+    }
+
+    #[test]
+    fn test_sequence_type_rna_iupac_ok() {
+        assert_eq!(sequence_type("GUUUUAACCCAAM"), Some(Alphabet::Rna));
+    }
+
+    #[test]
+    fn test_sequence_type_err() {
+        assert_eq!(sequence_type("ATCXXXRMGU"), None);
     }
 }

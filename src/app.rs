@@ -96,6 +96,8 @@ fn already_exists(filename: String) -> Result<(), String> {
     if !Path::new(&filename).exists() {
         Ok(())
     } else {
-        Err(String::from("Selected file already exists. Please change it using --out option"))
+        Err(String::from(
+            "Selected file already exists. Please change it using --out option",
+        ))
     }
 }

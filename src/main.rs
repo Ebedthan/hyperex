@@ -59,10 +59,20 @@ fn main() -> Result<()> {
     let y = 60 * 60 * 1000;
     let hours = duration.as_millis() / y;
     let minutes = (duration.as_millis() - (hours * y)) / (y / 60);
-    let seconds = (duration.as_millis() - (hours * y) - (minutes * (y / 60))) / 1000;
-    let milliseconds = duration.as_millis() - (hours * y) - (minutes * (y / 60)) - (seconds * 1000);
-    
-    info!("{}", format!("Walltime: {}h:{}m:{}s.{}ms", hours, minutes, seconds, milliseconds));
+    let seconds =
+        (duration.as_millis() - (hours * y) - (minutes * (y / 60))) / 1000;
+    let milliseconds = duration.as_millis()
+        - (hours * y)
+        - (minutes * (y / 60))
+        - (seconds * 1000);
+
+    info!(
+        "{}",
+        format!(
+            "Walltime: {}h:{}m:{}s.{}ms",
+            hours, minutes, seconds, milliseconds
+        )
+    );
     info!("Done getting hypervariable regions");
     info!("Enjoy. Share. Come back again!");
 
