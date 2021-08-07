@@ -16,7 +16,16 @@ pub fn build_app() -> App<'static, 'static> {
 
     let app = App::new("hyvrex")
         .version(crate_version!())
-        .usage("hyvrex [FLAGS/OPTIONS] <FILE>")
+        .usage(
+            "hyvrex [FLAGS/OPTIONS] <FILE>\n\n\
+            EXAMPLES:\n\
+            \t# With built-in 16S primer names\n\
+            \thyvrex -f 27F -r 337R file.fa.gz\n\n\
+            \t# With built-in 16S region names\n\
+            \thyvrex --region v3v4 file.fa.xz\n\n\
+            \t# With custom primer sequences\n\
+            \thyvrex -o outfile --forward-primer ATCG --reverse-primer TYAATG file.fa.bz2"
+        )
         .setting(clap_color_setting)
         .setting(AppSettings::DeriveDisplayOrder)
         .after_help(
@@ -24,7 +33,7 @@ pub fn build_app() -> App<'static, 'static> {
                  details.",
         )
         .author("Anicet Ebou, anicet.ebou@gmail.com")
-        .about("Hypevariable region primer-based extractor")
+        .about("Hypervariable region primer-based extractor")
         .arg(
             Arg::with_name("FILE")
                 .help("Input fasta file. Can be gzip'd, xz'd or bzip'd")
