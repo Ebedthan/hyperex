@@ -485,59 +485,45 @@ mod tests {
     fn test_region_to_primer_ok() {
         assert_eq!(
             region_to_primer("v1v2").unwrap(),
-            vec![vec!["AGAGTTTGATCMTGGCTCAG", "CYIACTGCTGCCTCCCGTAG"]]
+            vec!["AGAGTTTGATCMTGGCTCAG", "CYIACTGCTGCCTCCCGTAG"]
         );
         assert_eq!(
             region_to_primer("v1v3").unwrap(),
-            vec![vec!["AGAGTTTGATCMTGGCTCAG", "ATTACCGCGGCTGCTGG"]]
+            vec!["AGAGTTTGATCMTGGCTCAG", "ATTACCGCGGCTGCTGG"]
         );
         assert_eq!(
             region_to_primer("v1v9").unwrap(),
-            vec![vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]]
+            vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]
         );
         assert_eq!(
             region_to_primer("v3v4").unwrap(),
-            vec![vec!["CCTACGGGNGGCWGCAG", "GACTACHVGGGTATCTAATCC"]]
+            vec!["CCTACGGGNGGCWGCAG", "GACTACHVGGGTATCTAATCC"]
         );
         assert_eq!(
             region_to_primer("v3v5").unwrap(),
-            vec![vec!["CCTACGGGNGGCWGCAG", "CCGTCAATTYMTTTRAGT"]]
+            vec!["CCTACGGGNGGCWGCAG", "CCGTCAATTYMTTTRAGT"]
         );
         assert_eq!(
             region_to_primer("v4").unwrap(),
-            vec![vec!["GTGCCAGCMGCCGCGGTAA", "GGACTACHVGGGTWTCTAAT"]]
+            vec!["GTGCCAGCMGCCGCGGTAA", "GGACTACHVGGGTWTCTAAT"]
         );
         assert_eq!(
             region_to_primer("v4v5").unwrap(),
-            vec![vec!["GTGYCAGCMGCCGCGGTAA", "CCCCGYCAATTCMTTTRAGT"]]
+            vec!["GTGYCAGCMGCCGCGGTAA", "CCCCGYCAATTCMTTTRAGT"]
         );
         assert_eq!(
             region_to_primer("v5v7").unwrap(),
-            vec![vec!["AACMGGATTAGATACCCKG", "ACGTCATCCCCACCTTCC"]]
+            vec!["AACMGGATTAGATACCCKG", "ACGTCATCCCCACCTTCC"]
         );
         assert_eq!(
             region_to_primer("v6v9").unwrap(),
-            vec![vec!["TAAAACTYAAAKGAATTGACGGGG", "TACGGYTACCTTGTTAYGACTT"]]
+            vec!["TAAAACTYAAAKGAATTGACGGGG", "TACGGYTACCTTGTTAYGACTT"]
         );
         assert_eq!(
             region_to_primer("v7v9").unwrap(),
-            vec![vec!["YAACGAGCGCAACCC", "TACGGYTACCTTGTTAYGACTT"]]
+            vec!["YAACGAGCGCAACCC", "TACGGYTACCTTGTTAYGACTT"]
         );
-        assert_eq!(
-            region_to_primer("").unwrap(),
-            vec![
-                vec!["AGAGTTTGATCMTGGCTCAG", "CYIACTGCTGCCTCCCGTAG"],
-                vec!["AGAGTTTGATCMTGGCTCAG", "ATTACCGCGGCTGCTGG"],
-                vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"],
-                vec!["CCTACGGGNGGCWGCAG", "GACTACHVGGGTATCTAATCC"],
-                vec!["CCTACGGGNGGCWGCAG", "CCGTCAATTYMTTTRAGT"],
-                vec!["GTGCCAGCMGCCGCGGTAA", "GGACTACHVGGGTWTCTAAT"],
-                vec!["GTGYCAGCMGCCGCGGTAA", "CCCCGYCAATTCMTTTRAGT"],
-                vec!["AACMGGATTAGATACCCKG", "ACGTCATCCCCACCTTCC"],
-                vec!["TAAAACTYAAAKGAATTGACGGGG", "TACGGYTACCTTGTTAYGACTT"],
-                vec!["YAACGAGCGCAACCC", "TACGGYTACCTTGTTAYGACTT"]
-            ]
-        );
+        assert_eq!(region_to_primer("").unwrap(), vec![""]);
     }
 
     #[test]
@@ -573,12 +559,18 @@ mod tests {
         let second = vec!["cd", "ef", "gh"];
         assert_eq!(
             combine_vec(first, second),
-            [["ab", "cd"], ["cd", "ef"], ["ef", "gh"]]
+            vec![vec!["ab", "cd"], vec!["cd", "ef"], vec!["ef", "gh"]]
         );
     }
 
+    #[test]
+    #[should_panic]
     fn test_combine_vec_not_ok() {
         let first = vec!["ab", "cd", "ef"];
         let second = vec!["ab"];
+        assert_ne!(
+            combine_vec(first, second),
+            vec![vec!["ab", "cd"], vec!["cd", "ef"], vec!["ef", "gh"]]
+        );
     }
 }
