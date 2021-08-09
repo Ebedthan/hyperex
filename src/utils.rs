@@ -19,64 +19,39 @@ use phf::phf_map;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io;
+use std::path::Path;
 
-pub fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
+pub fn setup_logging() -> Result<(), fern::InitError> {
     let colors = ColoredLevelConfig::default();
 
-    let mut base_config = fern::Dispatch::new();
-
-    base_config = match verbosity {
-        0 => base_config
-            .level(log::LevelFilter::Info)
-            .level_for("overly-verbose-target", log::LevelFilter::Warn),
-        1 => base_config
-            .level(log::LevelFilter::Debug)
-            .level_for("overly-verbose-target", log::LevelFilter::Info),
-        2 => base_config.level(log::LevelFilter::Debug),
-        _3_or_more => base_config.level(log::LevelFilter::Trace),
-    };
-
-    // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
-        .format(|out, message, record| {
+    fern::Dispatch::new()
+        .format(move |out, message, record| {
             out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-                record.target(),
-                record.level(),
+                "{}[{}] {}",
+                chrono::Local::now().format("[%H:%M:%S]"),
+                colors.color(record.level()),
                 message
             ))
         })
-        .chain(fern::log_file("hyvrex.log")?);
-
-    let stdout_config = fern::Dispatch::new()
-        .format(move |out, message, record| {
-            // special format for debug messages coming from our own crate.
-            if record.level() > log::LevelFilter::Info
-                && record.target() == "hyvrex"
-            {
-                out.finish(format_args!(
-                    "---\nDEBUG: {}: {}\n---",
-                    chrono::Local::now().format("%H:%M:%S"),
-                    message
-                ))
-            } else {
-                out.finish(format_args!(
-                    "[{}][{}] {}",
-                    chrono::Local::now().format("%H:%M:%S"),
-                    colors.color(record.level()),
-                    message
-                ))
-            }
-        })
-        .chain(io::stdout());
-
-    base_config
-        .chain(file_config)
-        .chain(stdout_config)
+        .level(log::LevelFilter::Debug)
+        .chain(std::io::stdout())
+        .chain(fern::log_file("hyvrex.log")?)
         .apply()?;
 
     Ok(())
+}
+
+pub fn is_fasta(filename: &str) -> Result<(), &str> {
+    if Path::new(&filename).exists()
+        && (filename.contains(".fasta")
+            || filename.contains(".fa")
+            || filename.contains(".fas")
+            || filename.contains(".fna"))
+    {
+        Ok(())
+    } else {
+        Err("Is file path correct? with file extension (fa|fas|fasta|fna) clearly stated with appropriate permission?")
+    }
 }
 
 // Primers data
@@ -119,57 +94,39 @@ static REVERSE_PRIMERS: phf::Map<&'static str, &'static str> = phf_map! {
     "1492Rmod" => "TACGGYTACCTTGTTAYGACTT",
 };
 
-pub fn region_to_primer(region: &str) -> Result<Vec<Vec<&str>>> {
+pub fn region_to_primer(region: &str) -> Result<Vec<&str>> {
     match region {
-        "v1v2" => {
-            Ok(vec![vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["337R"]]])
+        "v1v2" => Ok(vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["337R"]]),
+        "v1v3" => Ok(vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["534R"]]),
+        "v1v9" => Ok(vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["1492Rmod"]]),
+        "v3v4" => Ok(vec![FORWARD_PRIMERS["341F"], REVERSE_PRIMERS["805R"]]),
+        "v3v5" => Ok(vec![FORWARD_PRIMERS["341F"], REVERSE_PRIMERS["926Rb"]]),
+        "v4" => Ok(vec![FORWARD_PRIMERS["515F"], REVERSE_PRIMERS["806R"]]),
+        "v4v5" => {
+            Ok(vec![FORWARD_PRIMERS["515F-Y"], REVERSE_PRIMERS["909-928R"]])
         }
-        "v1v3" => {
-            Ok(vec![vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["534R"]]])
+        "v5v7" => Ok(vec![FORWARD_PRIMERS["799F"], REVERSE_PRIMERS["1193R"]]),
+        "v6v9" => {
+            Ok(vec![FORWARD_PRIMERS["928F"], REVERSE_PRIMERS["1492Rmod"]])
         }
-        "v1v9" => Ok(vec![vec![
-            FORWARD_PRIMERS["27F"],
-            REVERSE_PRIMERS["1492Rmod"],
-        ]]),
-        "v3v4" => {
-            Ok(vec![vec![FORWARD_PRIMERS["341F"], REVERSE_PRIMERS["805R"]]])
+        "v7v9" => {
+            Ok(vec![FORWARD_PRIMERS["1100F"], REVERSE_PRIMERS["1492Rmod"]])
         }
-        "v3v5" => Ok(vec![vec![
-            FORWARD_PRIMERS["341F"],
-            REVERSE_PRIMERS["926Rb"],
-        ]]),
-        "v4" => {
-            Ok(vec![vec![FORWARD_PRIMERS["515F"], REVERSE_PRIMERS["806R"]]])
-        }
-        "v4v5" => Ok(vec![vec![
-            FORWARD_PRIMERS["515F-Y"],
-            REVERSE_PRIMERS["909-928R"],
-        ]]),
-        "v5v7" => Ok(vec![vec![
-            FORWARD_PRIMERS["799F"],
-            REVERSE_PRIMERS["1193R"],
-        ]]),
-        "v6v9" => Ok(vec![vec![
-            FORWARD_PRIMERS["928F"],
-            REVERSE_PRIMERS["1492Rmod"],
-        ]]),
-        "v7v9" => Ok(vec![vec![
-            FORWARD_PRIMERS["1100F"],
-            REVERSE_PRIMERS["1492Rmod"],
-        ]]),
-        _ => Ok(vec![
-            vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["337R"]],
-            vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["534R"]],
-            vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["1492Rmod"]],
-            vec![FORWARD_PRIMERS["341F"], REVERSE_PRIMERS["805R"]],
-            vec![FORWARD_PRIMERS["341F"], REVERSE_PRIMERS["926Rb"]],
-            vec![FORWARD_PRIMERS["515F"], REVERSE_PRIMERS["806R"]],
-            vec![FORWARD_PRIMERS["515F-Y"], REVERSE_PRIMERS["909-928R"]],
-            vec![FORWARD_PRIMERS["799F"], REVERSE_PRIMERS["1193R"]],
-            vec![FORWARD_PRIMERS["928F"], REVERSE_PRIMERS["1492Rmod"]],
-            vec![FORWARD_PRIMERS["1100F"], REVERSE_PRIMERS["1492Rmod"]],
-        ]),
+        _ => Ok(vec![""]),
     }
+}
+
+pub fn combine_vec<'a>(
+    first: Vec<&'a str>,
+    second: Vec<&'a str>,
+) -> Vec<Vec<&'a str>> {
+    let mut newvec: Vec<Vec<&str>> = Vec::new();
+
+    for i in 0..first.len() {
+        newvec.push(vec![first[i], second[i]]);
+    }
+
+    newvec
 }
 
 /// Get reader and compression format of file
@@ -608,5 +565,20 @@ mod tests {
             assert_eq!(rec.desc(), Some("desc"));
             assert_eq!(rec.seq(), b"ATCGCCG");
         }
+    }
+
+    #[test]
+    fn test_combine_vec() {
+        let first = vec!["ab", "cd", "ef"];
+        let second = vec!["cd", "ef", "gh"];
+        assert_eq!(
+            combine_vec(first, second),
+            [["ab", "cd"], ["cd", "ef"], ["ef", "gh"]]
+        );
+    }
+
+    fn test_combine_vec_not_ok() {
+        let first = vec!["ab", "cd", "ef"];
+        let second = vec!["ab"];
     }
 }

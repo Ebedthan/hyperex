@@ -39,8 +39,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .help("Input fasta file. Can be gzip'd, xz'd or bzip'd")
                 .long_help("Input fasta file. Can be gzip'd, xz'd or bzip'd")
                 .required(true)
-                .index(1)
-                .validator(is_fasta),
+                .index(1),
         )
         .arg(
             Arg::with_name("forward_primer")
@@ -49,6 +48,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .help("Specifies forward primer sequence. Can be a\nsequence, a regexp or a prosite pattern\nwith degenerate bases")
                 .conflicts_with("region")
                 .requires("reverse_primer")
+                .multiple(true)
                 .value_name("PRIMER")
         )
         .arg(
@@ -57,6 +57,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .long("reverse-primer")
                 .help("Specifies reverse primer sequence. Can be a\nsequence, a regexp or a prosite pattern\nwith degenerate bases")
                 .conflicts_with("region")
+                .multiple(true)
                 .value_name("PRIMER")
         )
         .arg(
@@ -88,28 +89,14 @@ pub fn build_app() -> App<'static, 'static> {
                 .validator(already_exists),
         )
         .arg(
-            Arg::with_name("verbose")
-                .long_help("Increases program verbosity each use for up to 3 times")
-                .short("v")
-                .long("verbose")
-                .multiple(true)
+            Arg::with_name("quiet")
+                .long_help("Decreases program verbosity")
+                .short("q")
+                .long("quiet")
                 .takes_value(false),
         );
 
     app
-}
-
-fn is_fasta(filename: String) -> Result<(), String> {
-    if Path::new(&filename).exists()
-        && (filename.contains(".fasta")
-            || filename.contains(".fa")
-            || filename.contains(".fas")
-            || filename.contains(".fna"))
-    {
-        Ok(())
-    } else {
-        Err(String::from("Is file path correct? with file extension (fa|fas|fasta|fna) clearly stated with appropriate permission?"))
-    }
 }
 
 fn already_exists(filename: String) -> Result<(), String> {
