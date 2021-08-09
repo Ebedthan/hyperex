@@ -68,6 +68,17 @@ pub fn build_app() -> App<'static, 'static> {
                 .value_name("REGION")
         )
         .arg(
+            Arg::with_name("mismatch")
+                .help("Specifies number of allowed mismatch")
+                .long("mismatch")
+                .short("m")
+                .value_name("N")
+                .possible_values(&["0", "1", "2", "3", "4"])
+                .hide_possible_values(true)
+                .default_value("0")
+                .takes_value(true)
+        )
+        .arg(
             Arg::with_name("output")
                 .help("Specifies the ouput file")
                 .short("o")

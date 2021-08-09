@@ -13,7 +13,7 @@ mod utils;
 
 use anyhow::Result;
 use clap::crate_version;
-use log::info;
+use log::{info, warn};
 
 use std::env;
 use std::time::Instant;
@@ -39,7 +39,8 @@ fn main() -> Result<()> {
     } else {
         primers = utils::region_to_primer("all")?;
     }
-
+    let mis = matches.value_of("mismatch").unwrap().to_string();
+    let mismatch = mis.parse::<u8>()?;
     let verbosity: u64 = matches.occurrences_of("verbose");
 
     // Set up program logging -----------------------------------------------
@@ -51,8 +52,13 @@ fn main() -> Result<()> {
     info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
     info!("You are {}", whoami::username());
     info!("Operating system is {}", whoami::platform());
-
-    utils::process_fa(infile, primers, outfile)?;
+    if mismatch != 0 {
+        warn!(
+            "You have allowed {} mismatch in the primer sequence",
+            mismatch
+        );
+    }
+    utils::process_fa(infile, primers, outfile, mismatch)?;
 
     // Finishing
     let duration = startime.elapsed();

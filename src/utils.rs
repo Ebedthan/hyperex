@@ -8,14 +8,13 @@ extern crate fern;
 extern crate log;
 extern crate niffler;
 extern crate phf;
-extern crate regex;
 
 use anyhow::{anyhow, Context, Result};
 use bio::io::fasta;
+use bio::pattern_matching::myers::MyersBuilder;
 use fern::colors::ColoredLevelConfig;
 use log::{error, info, warn};
 use phf::phf_map;
-use regex::Regex;
 
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -233,50 +232,6 @@ fn primers_to_region(primers: Vec<&str>) -> String {
     }
 }
 
-fn from_iupac_to_regex(primer: &str, alphabet: &str) -> String {
-    let mut clean_regex = String::new();
-
-    if alphabet == "dna" {
-        clean_regex = primer
-            .chars()
-            .map(|x| match x {
-                'R' => "[AG]".to_string(),
-                'Y' => "[CT]".to_string(),
-                'S' => "[GC]".to_string(),
-                'W' => "[AT]".to_string(),
-                'K' => "[GT]".to_string(),
-                'M' => "[AC]".to_string(),
-                'B' => "[CGT]".to_string(),
-                'D' => "[AGT]".to_string(),
-                'H' => "[ACT]".to_string(),
-                'V' => "[ACG]".to_string(),
-                'N' => ".".to_string(),
-                _ => String::from(x),
-            })
-            .collect();
-    } else if alphabet == "rna" {
-        clean_regex = primer
-            .chars()
-            .map(|x| match x {
-                'R' => "[AG]".to_string(),
-                'Y' => "[CU]".to_string(),
-                'S' => "[GC]".to_string(),
-                'W' => "[AU]".to_string(),
-                'K' => "[GU]".to_string(),
-                'M' => "[AC]".to_string(),
-                'B' => "[CGU]".to_string(),
-                'D' => "[AGU]".to_string(),
-                'H' => "[ACU]".to_string(),
-                'V' => "[ACG]".to_string(),
-                'N' => ".".to_string(),
-                _ => String::from(x),
-            })
-            .collect();
-    }
-
-    clean_regex
-}
-
 fn to_complement(primer: &str, alphabet: &str) -> String {
     let mut complement = String::new();
 
@@ -353,6 +308,7 @@ pub fn process_fa(
     file: &str,
     primers: Vec<Vec<&str>>,
     outfile: &str,
+    mismatch: u8,
 ) -> Result<()> {
     let (reader, mut _compression) =
         read_file(file).with_context(|| "Cannot read file")?;
@@ -360,6 +316,27 @@ pub fn process_fa(
     let mut records = fasta::Reader::new(reader).records();
 
     let out = OpenOptions::new().create(true).append(true).open(outfile)?;
+
+    // Build Myers with IUPAC ambiguities in patterns
+    let ambigs = [
+        (b'M', &b"AC"[..]),
+        (b'R', &b"AG"[..]),
+        (b'W', &b"AT"[..]),
+        (b'S', &b"CG"[..]),
+        (b'Y', &b"CT"[..]),
+        (b'K', &b"GT"[..]),
+        (b'V', &b"ACGMRS"[..]),
+        (b'H', &b"ACTMWY"[..]),
+        (b'D', &b"AGTRWK"[..]),
+        (b'B', &b"CGTSYK"[..]),
+        (b'N', &b"ACGTMRWSYKVHDB"[..]),
+    ];
+
+    let mut builder = MyersBuilder::new();
+
+    for &(base, equivalents) in &ambigs {
+        builder.ambig(base, equivalents);
+    }
 
     while let Some(Ok(record)) = records.next() {
         let seq = record.seq();
@@ -381,22 +358,37 @@ pub fn process_fa(
         }
 
         for primer_pair in primers.iter() {
-            let forward_re =
-                Regex::new(&from_iupac_to_regex(primer_pair[0], alphabet))?;
-            let reverse_re = Regex::new(&from_iupac_to_regex(
-                &to_reverse_complement(primer_pair[1], alphabet),
-                alphabet,
-            ))?;
-
             let region = primers_to_region(primer_pair.to_vec());
 
-            let forward_match = forward_re.find(std::str::from_utf8(seq)?);
-            let reverse_match = reverse_re.find(std::str::from_utf8(seq)?);
+            let mut forward_myers = builder.build_64(primer_pair[0].as_bytes());
+            let mut reverse_myers = builder.build_64(
+                to_reverse_complement(primer_pair[1], alphabet).as_bytes(),
+            );
 
-            match forward_match {
-                Some(fmat) => {
-                    match reverse_match {
-                        Some(rmat) => {
+            let mut forward_matches =
+                forward_myers.find_all_lazy(seq, mismatch);
+            let mut reverse_matches =
+                reverse_myers.find_all_lazy(seq, mismatch);
+
+            // Get the best hit
+            let forward_best_hit =
+                forward_matches.by_ref().min_by_key(|&(_, dist)| dist);
+            let reverse_best_hit =
+                reverse_matches.by_ref().min_by_key(|&(_, dist)| dist);
+
+            match forward_best_hit {
+                Some((forward_best_hit_end, _)) => {
+                    match reverse_best_hit {
+                        Some((reverse_best_hit_end, _)) => {
+                            // Get match start position of forward primer
+                            let (forward_start, _) = forward_matches
+                                .hit_at(forward_best_hit_end)
+                                .unwrap();
+                            // Get match start position of reverse primer
+                            let (reverse_start, _) = reverse_matches
+                                .hit_at(reverse_best_hit_end)
+                                .unwrap();
+
                             if !region.is_empty() {
                                 write_fa(
                                     &out,
@@ -409,7 +401,8 @@ pub fn process_fa(
                                             )
                                             .as_str(),
                                         ),
-                                        &seq[fmat.start()..rmat.end()],
+                                        &seq[forward_start
+                                            ..reverse_start + primer_pair[1].len()],
                                     ),
                                 )?;
                             } else {
@@ -424,24 +417,26 @@ pub fn process_fa(
                                             )
                                             .as_str(),
                                         ),
-                                        &seq[fmat.start()..rmat.end()],
+                                        &seq[forward_start
+                                            ..reverse_start
+                                                + primer_pair[1].len()],
                                     ),
                                 )?;
                             }
-                        },
+                        }
                         None => {
-                            warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[1]);
+                            warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[1])
                         }
                     }
-                },
-                None => {
-                    match reverse_match {
-                        Some(_) => {
-                            warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[0]);
-                        },
-                        None => warn!("Region {} not found because primers {}, {} was not found in the sequence", region, primer_pair[0], primer_pair[1])
-                    }
                 }
+                None => match reverse_best_hit {
+                    Some((_, _)) => {
+                        warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[0]);
+                    }
+                    None => {
+                        warn!("Region {} not found because primers {}, {} was not found in the sequence", region, primer_pair[0], primer_pair[1])
+                    }
+                },
             }
         }
     }
@@ -502,32 +497,6 @@ mod tests {
             to_reverse_complement("GTGCCAGCMGCCGCGGTAA", "dna"),
             "TTACCGCGGCKGCTGGCAC"
         );
-    }
-
-    #[test]
-    fn test_from_iupac_to_regex_dna() {
-        assert_eq!(
-            from_iupac_to_regex("SACCWTKMBDVRTCGYATCH", "dna"),
-            "[GC]ACC[AT]T[GT][AC][CGT][AGT][ACG][AG]TCG[CT]ATC[ACT]"
-        );
-    }
-
-    #[test]
-    fn test_from_iupac_to_regex_dna2() {
-        assert_eq!(from_iupac_to_regex("GGGNAAA", "dna"), "GGG.AAA");
-    }
-
-    #[test]
-    fn test_from_iupac_to_regex_rna() {
-        assert_eq!(
-            from_iupac_to_regex("SACCWUKMBDVRUCGYANUCH", "rna"),
-            "[GC]ACC[AU]U[GU][AC][CGU][AGU][ACG][AG]UCG[CU]A.UC[ACU]"
-        );
-    }
-
-    #[test]
-    fn test_from_iupac_to_regex_rna2() {
-        assert_eq!(from_iupac_to_regex("GGGNAUA", "rna"), "GGG.AUA");
     }
 
     #[test]
