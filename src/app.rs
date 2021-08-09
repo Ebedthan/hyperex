@@ -80,12 +80,12 @@ pub fn build_app() -> App<'static, 'static> {
                 .takes_value(true)
         )
         .arg(
-            Arg::with_name("output")
-                .help("Specifies the ouput file")
-                .short("o")
-                .long("out")
+            Arg::with_name("prefix")
+                .help("Specifies the prefix for the output files")
+                .short("p")
+                .long("prefix")
                 .value_name("FILE")
-                .default_value("hyvrex_out.fa")
+                .default_value("hyvrex_out")
                 .validator(already_exists),
         )
         .arg(
@@ -100,11 +100,13 @@ pub fn build_app() -> App<'static, 'static> {
 }
 
 fn already_exists(filename: String) -> Result<(), String> {
-    if !Path::new(&filename).exists() {
+    if !Path::new(format!("{}.fa", filename).as_str()).exists()
+        || !Path::new(format!("{}.gff", filename).as_str()).exists()
+    {
         Ok(())
     } else {
         Err(String::from(
-            "Selected file already exists. Please change it using --out option",
+            "Specified prefix already exists. Please change it using --prefix option",
         ))
     }
 }

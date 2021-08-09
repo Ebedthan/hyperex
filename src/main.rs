@@ -56,7 +56,7 @@ fn main() -> Result<()> {
         utils::is_fasta(infile).unwrap();
     }
 
-    let outfile = matches.value_of("output").unwrap();
+    let prefix = matches.value_of("prefix").unwrap();
 
     let quiet = matches.is_present("quiet");
 
@@ -118,7 +118,7 @@ fn main() -> Result<()> {
             mismatch
         );
     }
-    utils::process_fa(infile, primers, outfile, mismatch)?;
+    utils::process_fa(infile, primers, prefix, mismatch)?;
 
     // Finishing
     // Cleaning around

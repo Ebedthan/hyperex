@@ -18,7 +18,7 @@ use phf::phf_map;
 
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 
 pub fn setup_logging() -> Result<(), fern::InitError> {
@@ -151,25 +151,6 @@ fn read_file(
     })
 }
 
-/// Write to provided data to a fasta file in append mode
-///
-/// # Example
-/// ```rust
-///
-/// # use bio::io::fasta;
-/// let filename = "myfile.fa";
-/// let record = fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
-/// write_to_fa(filename, &record);
-/// ```
-///
-fn write_fa(file: &std::fs::File, record: fasta::Record) -> Result<()> {
-    let handle = io::BufWriter::new(file);
-    let mut writer = fasta::Writer::new(handle);
-    let write_result = writer.write_record(&record)?;
-
-    Ok(write_result)
-}
-
 fn primers_to_region(primers: Vec<&str>) -> String {
     let mut first_part = "";
     let mut second_part = "";
@@ -264,7 +245,7 @@ pub fn sequence_type(sequence: &str) -> Option<Alphabet> {
 pub fn process_fa(
     file: &str,
     primers: Vec<Vec<&str>>,
-    outfile: &str,
+    prefix: &str,
     mismatch: u8,
 ) -> Result<()> {
     let (reader, mut _compression) =
@@ -272,7 +253,13 @@ pub fn process_fa(
 
     let mut records = fasta::Reader::new(reader).records();
 
-    let out = OpenOptions::new().create(true).append(true).open(outfile)?;
+    let mut fasta_writer = fasta::Writer::to_file(format!("{}.fa", prefix))?;
+    let gff_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(format!("{}.gff", prefix))?;
+    let mut gff_writer = io::BufWriter::new(gff_file);
+    gff_writer.write_all(b"##gff-version 3\n")?;
 
     // Build Myers with IUPAC ambiguities in patterns
     let ambigs = [
@@ -347,25 +334,26 @@ pub fn process_fa(
                                 .unwrap();
 
                             if !region.is_empty() {
-                                write_fa(
-                                    &out,
-                                    fasta::Record::with_attrs(
+                                fasta_writer.write_record(
+                                    &fasta::Record::with_attrs(
                                         record.id(),
                                         Some(
                                             format!(
-                                                "region={} forward={} reverse={}",
-                                                region, primer_pair[0], primer_pair[1]
-                                            )
+                                            "region={} forward={} reverse={}",
+                                            region,
+                                            primer_pair[0],
+                                            primer_pair[1]
+                                        )
                                             .as_str(),
                                         ),
                                         &seq[forward_start
-                                            ..reverse_start + primer_pair[1].len()],
+                                            ..reverse_start
+                                                + primer_pair[1].len()],
                                     ),
                                 )?;
                             } else {
-                                write_fa(
-                                    &out,
-                                    fasta::Record::with_attrs(
+                                fasta_writer.write_record(
+                                    &fasta::Record::with_attrs(
                                         record.id(),
                                         Some(
                                             format!(
@@ -380,6 +368,8 @@ pub fn process_fa(
                                     ),
                                 )?;
                             }
+                            // Write region to GFF3 file
+                            gff_writer.write_all(format!("{}\thyvrex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region\n", record.id(), forward_start, forward_start + primer_pair[1].len()).as_bytes())?;
                         }
                         None => {
                             warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[1])
@@ -406,7 +396,7 @@ pub fn process_fa(
 mod tests {
     use super::*;
     use std::io::Write;
-    use tempfile::{tempfile, NamedTempFile};
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_primers_to_region_ok() {
@@ -524,15 +514,6 @@ mod tests {
             vec!["YAACGAGCGCAACCC", "TACGGYTACCTTGTTAYGACTT"]
         );
         assert_eq!(region_to_primer("").unwrap(), vec![""]);
-    }
-
-    #[test]
-    fn test_write_fa_ok() {
-        let record =
-            fasta::Record::with_attrs("id_str", Some("desc"), b"ATCGCCG");
-        let file = tempfile().expect("Cannot create temp file");
-
-        assert!((write_fa(&file, record)).is_ok());
     }
 
     #[test]
