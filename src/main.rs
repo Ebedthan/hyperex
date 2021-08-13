@@ -132,7 +132,7 @@ fn main() -> Result<()> {
 
     utils::get_hypervar_regions(infile, primers, prefix, mismatch)?;
     info!("Done getting hypervariable regions");
-    
+
     // FINISHING ------------------------------------------------------------
     // Cleaning around
     if Path::new("infile.fa").exists() {

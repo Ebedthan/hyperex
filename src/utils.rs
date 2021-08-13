@@ -406,8 +406,8 @@ pub fn get_hypervar_regions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use std::fs;
+    use std::io::Write;
     use tempfile::NamedTempFile;
 
     #[test]
@@ -569,7 +569,13 @@ mod tests {
 
     #[test]
     fn test_get_hypervar_regions() {
-        assert!(get_hypervar_regions("test/test.fa.gz", vec![vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]], "test/hyvrex", 0).is_ok());
+        assert!(get_hypervar_regions(
+            "test/test.fa.gz",
+            vec![vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]],
+            "test/hyvrex",
+            0
+        )
+        .is_ok());
         fs::remove_file("test/hyvrex.fa").expect("cannot delete file");
         fs::remove_file("test/hyvrex.gff").expect("cannot delete file");
     }
