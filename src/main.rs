@@ -18,20 +18,27 @@ use log::{error, info, warn};
 
 use std::env;
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
+use std::process;
 use std::time::Instant;
 
 // TODO: make --region to accept primer file like forward_primer\treverse_primer\n
 fn main() -> Result<()> {
-    // Starting up the chrono
+    // SET/GET REQUIREMENTS -------------------------------------------------
+    // Starting up the Walltime chrono
     let startime = Instant::now();
 
-    // Define command-line arguments ----------------------------------------
+    // Get command-line arguments (see app.rs)
     let matches = app::build_app().get_matches_from(env::args_os());
 
-    // Read command-line arguments ------------------------------------------
-    // Either read the input through stdin or use the supplied value as filename
+    // is --quiet option specified by the user?
+    let quiet = matches.is_present("quiet");
+    utils::setup_logging(quiet)?; // Settting up logging
+
+    // Reading input data
+    // This can be a piped data or a filename
+    // So we match the value to '-' or some other value and read it
     let infile = match matches.value_of("FILE") {
         Some(val) => {
             if val != "-" {
@@ -46,23 +53,26 @@ fn main() -> Result<()> {
                 "infile.fa"
             }
         }
-        // dump value that should never been reached as clap will always check
+        // empty value that should never been reached as clap will always check
         // that infile is supplied
-        _ => "no",
+        _ => "",
     };
 
-    // Check that the supplied file is valid
+    // Check that the supplied file exists
     if infile != "infile.fa" {
-        utils::is_fasta(infile).unwrap();
+        match Path::new(infile).exists() {
+            true => (),
+            false => {
+                writeln!(std::io::stderr(), "error: Input file not found. Is the path correct? Do you have permission to read the file?")?;
+                process::exit(1);
+            }
+        }
     }
 
+    // Read prefix for output files
     let prefix = matches.value_of("prefix").unwrap();
 
-    let quiet = matches.is_present("quiet");
-
-    // Set up program logging -----------------------------------------------
-    utils::setup_logging()?;
-
+    // Get primers from command-line as a list of primer can be specified
     let mut primers: Vec<Vec<&str>> = Vec::new();
     if matches.is_present("forward_primer") && primers.is_empty() {
         // Read supplied forward and reverse primers
@@ -75,10 +85,11 @@ fn main() -> Result<()> {
             .unwrap()
             .collect::<Vec<_>>();
 
-        if first.len() != second.len() {
+        if (first.len() % 2) == 0 && first.len() != second.len() {
             error!(
-                "Supplied forward and reverse primers are not multiple of 2"
+                "Supplied forward and reverse primers are not multiple of 2. Please check specified primers"
             );
+            process::exit(1);
         }
         // Combine both vec into one big vec
         primers = utils::combine_vec(first, second);
@@ -90,7 +101,7 @@ fn main() -> Result<()> {
             .map(|x| utils::region_to_primer(x).unwrap())
             .collect::<Vec<_>>();
     } else {
-        // Case no region or primer is supplied, all the built-in regions are
+        // Case when no region or primer is supplied, all the built-in regions are
         // extracted
         let all = vec![
             "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7",
@@ -104,23 +115,25 @@ fn main() -> Result<()> {
     let mis = matches.value_of("mismatch").unwrap().to_string();
     let mismatch = mis.parse::<u8>()?;
 
-    if !quiet {
-        info!("This is hyvrex v{}", crate_version!());
-        info!("Written by Anicet Ebou");
-        info!("Available at https://github.com/Ebedthan/hyvrex.git");
-        info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
-        info!("You are {}", whoami::username());
-        info!("Operating system is {}", whoami::platform());
-    }
+    // STARTING CORE PROGRAM ------------------------------------------------
+    info!("This is hyvrex v{}", crate_version!());
+    info!("Written by Anicet Ebou");
+    info!("Available at https://github.com/Ebedthan/hyvrex.git");
+    info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
+    info!("You are {}", whoami::username());
+    info!("Operating system is {}", whoami::platform());
+
     if mismatch != 0 {
         warn!(
             "You have allowed {} mismatch in the primer sequence",
             mismatch
         );
     }
-    utils::process_fa(infile, primers, prefix, mismatch)?;
 
-    // Finishing
+    utils::get_hypervar_regions(infile, primers, prefix, mismatch)?;
+    info!("Done getting hypervariable regions");
+    
+    // FINISHING ------------------------------------------------------------
     // Cleaning around
     if Path::new("infile.fa").exists() {
         fs::remove_file("infile.fa")?;
@@ -136,17 +149,14 @@ fn main() -> Result<()> {
         - (minutes * (y / 60))
         - (seconds * 1000);
 
-    if !quiet {
-        info!(
-            "{}",
-            format!(
-                "Walltime: {}h:{}m:{}s.{}ms",
-                hours, minutes, seconds, milliseconds
-            )
-        );
-        info!("Done getting hypervariable regions");
-        info!("Enjoy. Share. Come back again!");
-    }
+    info!(
+        "{}",
+        format!(
+            "Walltime: {}h:{}m:{}s.{}ms",
+            hours, minutes, seconds, milliseconds
+        )
+    );
+    info!("Enjoy. Share. Come back again!");
 
     Ok(())
 }

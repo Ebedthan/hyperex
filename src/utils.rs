@@ -19,39 +19,50 @@ use phf::phf_map;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
-use std::path::Path;
 
-pub fn setup_logging() -> Result<(), fern::InitError> {
+pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
     let colors = ColoredLevelConfig::default();
+    let mut base_config = fern::Dispatch::new();
 
-    fern::Dispatch::new()
+    base_config = match quiet {
+        // if user required quietness let only output warning messages
+        // or messages more severe than warnings
+        true => base_config.level(log::LevelFilter::Warn),
+        // if quietness is not specified which implies verbosity is allowed
+        // output
+        false => base_config.level(log::LevelFilter::Debug),
+    };
+
+    // Separate file config so we can include year, month and day in file logs
+    let file_config = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{}[{}][{}] {}",
+                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .chain(fern::log_file("hyvrex.log")?);
+
+    let stdout_config = fern::Dispatch::new()
         .format(move |out, message, record| {
             out.finish(format_args!(
-                "{}[{}] {}",
-                chrono::Local::now().format("[%H:%M:%S]"),
+                "[{}][{}] {}",
+                chrono::Local::now().format("%H:%M:%S"),
                 colors.color(record.level()),
                 message
             ))
         })
-        .level(log::LevelFilter::Debug)
-        .chain(std::io::stdout())
-        .chain(fern::log_file("hyvrex.log")?)
+        .chain(io::stdout());
+
+    base_config
+        .chain(file_config)
+        .chain(stdout_config)
         .apply()?;
 
     Ok(())
-}
-
-pub fn is_fasta(filename: &str) -> Result<(), &str> {
-    if Path::new(&filename).exists()
-        && (filename.contains(".fasta")
-            || filename.contains(".fa")
-            || filename.contains(".fas")
-            || filename.contains(".fna"))
-    {
-        Ok(())
-    } else {
-        Err("Is file path correct? with file extension (fa|fas|fasta|fna) clearly stated with appropriate permission?")
-    }
 }
 
 // Primers data
@@ -242,7 +253,7 @@ pub fn sequence_type(sequence: &str) -> Option<Alphabet> {
     }
 }
 
-pub fn process_fa(
+pub fn get_hypervar_regions(
     file: &str,
     primers: Vec<Vec<&str>>,
     prefix: &str,
@@ -369,7 +380,7 @@ pub fn process_fa(
                                 )?;
                             }
                             // Write region to GFF3 file
-                            gff_writer.write_all(format!("{}\thyvrex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region\n", record.id(), forward_start, forward_start + primer_pair[1].len()).as_bytes())?;
+                            gff_writer.write_all(format!("{}\thyvrex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region\n", record.id(), forward_start, reverse_start + primer_pair[1].len()).as_bytes())?;
                         }
                         None => {
                             warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[1])
@@ -396,6 +407,7 @@ pub fn process_fa(
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::fs;
     use tempfile::NamedTempFile;
 
     #[test]
@@ -553,5 +565,12 @@ mod tests {
             combine_vec(first, second),
             vec![vec!["ab", "cd"], vec!["cd", "ef"], vec!["ef", "gh"]]
         );
+    }
+
+    #[test]
+    fn test_get_hypervar_regions() {
+        assert!(get_hypervar_regions("test/test.fa.gz", vec![vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]], "test/hyvrex", 0).is_ok());
+        fs::remove_file("test/hyvrex.fa").expect("cannot delete file");
+        fs::remove_file("test/hyvrex.gff").expect("cannot delete file");
     }
 }
