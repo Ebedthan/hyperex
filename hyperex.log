@@ -1,3 +1,0 @@
-[2021-08-16][12:17:48][hyperex::utils][INFO] Sequence type is DNA
-[2021-08-16][12:17:48][hyperex::utils][WARN] Sequence length is less than 1500 bp. We may not be able to find some regions
-[2021-08-16][12:17:48][hyperex::utils][WARN] Region v1v9 not found because primers AGAGTTTGATCMTGGCTCAG, TACGGYTACCTTGTTAYGACTT was not found in the sequence
