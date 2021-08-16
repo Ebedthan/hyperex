@@ -44,7 +44,7 @@ pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
                 message
             ))
         })
-        .chain(fern::log_file("hyvrex.log")?);
+        .chain(fern::log_file("hyperex.log")?);
 
     let stdout_config = fern::Dispatch::new()
         .format(move |out, message, record| {
@@ -308,8 +308,8 @@ pub fn get_hypervar_regions(
             }
             None => error!("Sequence type is not recognized as DNA or RNA"),
         }
-        if seq.len() <= 1400 {
-            warn!("Sequence length is less than 1400 bp. We may not be able to find some regions");
+        if seq.len() <= 1500 {
+            warn!("Sequence length is less than 1500 bp. We may not be able to find some regions");
         }
 
         for primer_pair in primers.iter() {
@@ -380,7 +380,7 @@ pub fn get_hypervar_regions(
                                 )?;
                             }
                             // Write region to GFF3 file
-                            gff_writer.write_all(format!("{}\thyvrex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region\n", record.id(), forward_start, reverse_start + primer_pair[1].len()).as_bytes())?;
+                            gff_writer.write_all(format!("{}\thyperex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region\n", record.id(), forward_start, reverse_start + primer_pair[1].len()).as_bytes())?;
                         }
                         None => {
                             warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[1])
@@ -572,11 +572,16 @@ mod tests {
         assert!(get_hypervar_regions(
             "test/test.fa.gz",
             vec![vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]],
-            "test/hyvrex",
+            "test/hyperex",
             0
         )
         .is_ok());
-        fs::remove_file("test/hyvrex.fa").expect("cannot delete file");
-        fs::remove_file("test/hyvrex.gff").expect("cannot delete file");
+        fs::remove_file("test/hyperex.fa").expect("cannot delete file");
+        fs::remove_file("test/hyperex.gff").expect("cannot delete file");
+    }
+
+    #[test]
+    fn test_setup_logging() {
+        assert!(setup_logging(false).is_ok());
     }
 }

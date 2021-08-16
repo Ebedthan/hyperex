@@ -14,22 +14,22 @@ pub fn build_app() -> App<'static, 'static> {
         AppSettings::ColorNever
     };
 
-    let app = App::new("hyvrex")
+    let app = App::new("hyperex")
         .version(crate_version!())
         .usage(
-            "hyvrex [FLAGS/OPTIONS] <FILE>\n\n\
+            "hyperex [FLAGS/OPTIONS] <FILE>\n\n\
             EXAMPLES:\n\
             \t# With built-in 16S primer names\n\
-            \thyvrex -f 27F -r 337R file.fa.gz\n\n\
+            \thyperex -f 27F -r 337R file.fa.gz\n\n\
             \t# With built-in 16S region names\n\
-            \thyvrex --region v3v4 file.fa.xz\n\n\
+            \thyperex --region v3v4 file.fa.xz\n\n\
             \t# With custom primer sequences\n\
-            \thyvrex -o outfile --forward-primer ATCG --reverse-primer TYAATG file.fa.bz2"
+            \thyperex -o outfile --forward-primer ATCG --reverse-primer TYAATG file.fa.bz2"
         )
         .setting(clap_color_setting)
         .setting(AppSettings::DeriveDisplayOrder)
         .after_help(
-            "Note: `hyvrex -h` prints a short and concise overview while `hyvrex --help` gives all \
+            "Note: `hyperex -h` prints a short and concise overview while `hyperex --help` gives all \
                  details.",
         )
         .author("Anicet Ebou, anicet.ebou@gmail.com")
@@ -66,6 +66,8 @@ pub fn build_app() -> App<'static, 'static> {
                 .help("Specifies a hypervariable region to extract")
                 .possible_values(&["v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9"])
                 .hide_possible_values(true)
+                .multiple(true)
+                .number_of_values(1)
                 .value_name("REGION")
         )
         .arg(
@@ -85,7 +87,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .short("p")
                 .long("prefix")
                 .value_name("FILE")
-                .default_value("hyvrex_out")
+                .default_value("hyperex_out")
                 .validator(already_exists),
         )
         .arg(

@@ -116,9 +116,9 @@ fn main() -> Result<()> {
     let mismatch = mis.parse::<u8>()?;
 
     // STARTING CORE PROGRAM ------------------------------------------------
-    info!("This is hyvrex v{}", crate_version!());
+    info!("This is hyperex v{}", crate_version!());
     info!("Written by Anicet Ebou");
-    info!("Available at https://github.com/Ebedthan/hyvrex.git");
+    info!("Available at https://github.com/Ebedthan/hyperex.git");
     info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
     info!("You are {}", whoami::username());
     info!("Operating system is {}", whoami::platform());

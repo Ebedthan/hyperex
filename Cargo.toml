@@ -1,6 +1,6 @@
 [package]
-name = "hyvrex"
-version = "0.7.0"
+name = "hyperex"
+version = "0.1.0"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
 exclude = ["test/*", ".github/*", ".cargo/*"]
@@ -34,6 +34,6 @@ panic           = 'abort'
 incremental     = false
 
 [[bin]]
-name = "hyvrex"
+name = "hyperex"
 path = "src/main.rs"
 bench = false

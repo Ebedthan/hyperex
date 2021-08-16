@@ -438,8 +438,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyvrex"
-version = "0.7.0"
+name = "hyperex"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "bio",
