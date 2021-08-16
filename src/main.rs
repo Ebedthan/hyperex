@@ -63,7 +63,7 @@ fn main() -> Result<()> {
         match Path::new(infile).exists() {
             true => (),
             false => {
-                writeln!(std::io::stderr(), "error: Input file not found. Is the path correct? Do you have permission to read the file?")?;
+                writeln!(std::io::stderr(), "error: No such file or directory. Is the path correct? Do you have permission to read the file?")?;
                 process::exit(1);
             }
         }

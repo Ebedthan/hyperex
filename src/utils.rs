@@ -9,7 +9,7 @@ extern crate log;
 extern crate niffler;
 extern crate phf;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use bio::io::fasta;
 use bio::pattern_matching::myers::MyersBuilder;
 use fern::colors::ColoredLevelConfig;
@@ -153,13 +153,9 @@ pub fn combine_vec<'a>(
 fn read_file(
     filename: &str,
 ) -> Result<(Box<dyn io::Read>, niffler::compression::Format)> {
-    let raw_in = Box::new(io::BufReader::new(
-        File::open(filename).with_context(|| "Cannot read a file")?,
-    ));
+    let raw_in = Box::new(io::BufReader::new(File::open(filename)?));
 
-    niffler::get_reader(raw_in).with_context(|| {
-        anyhow!("Could not detect compression of file '{}'", filename)
-    })
+    Ok(niffler::get_reader(raw_in)?)
 }
 
 fn primers_to_region(primers: Vec<&str>) -> String {
@@ -437,16 +433,16 @@ mod tests {
     #[test]
     fn test_complement_dna() {
         assert_eq!(
-            to_complement("ATCGATCGATCGATCGRYKBVDH", "dna"),
-            String::from("TAGCTAGCTAGCTAGCYRMVBHD")
+            to_complement("ATCGATCGATCGATCGRYKBVDHX", "dna"),
+            String::from("TAGCTAGCTAGCTAGCYRMVBHDX")
         );
     }
 
     #[test]
     fn test_complement_rna() {
         assert_eq!(
-            to_complement("AUCGAUCGAUCGAUCGRYKBVDHM", "rna"),
-            String::from("UAGCUAGCUAGCUAGCYRMVBHDK")
+            to_complement("AUCGAUCGAUCGAUCGRYKBVDHMX", "rna"),
+            String::from("UAGCUAGCUAGCUAGCYRMVBHDKX")
         );
     }
 
@@ -570,18 +566,24 @@ mod tests {
     #[test]
     fn test_get_hypervar_regions() {
         assert!(get_hypervar_regions(
-            "test/test.fa.gz",
+            "tests/test.fa.gz",
             vec![vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]],
-            "test/hyperex",
+            "hyperex",
             0
         )
         .is_ok());
-        fs::remove_file("test/hyperex.fa").expect("cannot delete file");
-        fs::remove_file("test/hyperex.gff").expect("cannot delete file");
+        fs::remove_file("hyperex.fa").expect("cannot delete file");
+        fs::remove_file("hyperex.gff").expect("cannot delete file");
     }
 
     #[test]
     fn test_setup_logging() {
         assert!(setup_logging(false).is_ok());
+    }
+
+    #[test]
+    fn test_read_file() {
+        let myfile = "tests/test.fa.gz";
+        assert!(read_file(myfile).is_ok());
     }
 }
