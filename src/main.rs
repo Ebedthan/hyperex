@@ -28,6 +28,8 @@ fn main() -> Result<()> {
     // SET/GET REQUIREMENTS -------------------------------------------------
     // Starting up the Walltime chrono
     let startime = Instant::now();
+    let stderr = std::io::stderr();
+    let mut ehandle = stderr.lock();
 
     // Get command-line arguments (see app.rs)
     let matches = app::build_app().get_matches_from(env::args_os());
@@ -58,7 +60,7 @@ fn main() -> Result<()> {
         match Path::new(infile).exists() {
             true => (),
             false => {
-                writeln!(std::io::stderr(), "error: No such file or directory. Is the path correct? Do you have permission to read the file?")?;
+                writeln!(ehandle, "error: No such file or directory. Is the path correct? Do you have permission to read the file?")?;
                 process::exit(1);
             }
         }
@@ -80,6 +82,11 @@ fn main() -> Result<()> {
 
     // Get primers from command-line as a list of primer can be specified
     let mut primers: Vec<Vec<String>> = Vec::new();
+    let all = vec![
+        "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9",
+        "v7v9",
+    ];
+    // Case the user go for -f and -r options
     if matches.is_present("forward_primer") && primers.is_empty() {
         // Read supplied forward and reverse primers
         let first = matches
@@ -92,36 +99,39 @@ fn main() -> Result<()> {
             .unwrap()
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
-
+        // Primers should be in pairs!
         if (first.len() % 2) == 0 && first.len() != second.len() {
-            error!(
+            writeln!(ehandle,
                 "Supplied forward and reverse primers are not multiple of 2. Please check specified primers"
-            );
+            )?;
             process::exit(1);
         }
-        // Combine both vec into one big vec
+
+        // Combine both Vec<String> into Vec<Vec<String>>
         primers = utils::combine_vec(first, second);
+
+    // Case user goes for --region option
     } else if matches.is_present("region") {
-        // Get supplied region names
+        // Get supplied region names which can be multiple
         let regions = matches.values_of("region").unwrap().collect::<Vec<_>>();
 
         // Check if its a file that have been supplied or region name
         if Path::new(regions[0]).is_file() {
             // We will consider in this case that the region name is a file
             primers = utils::file_to_vec(regions[0]).unwrap();
-        } else {
+        // Check that the region name is supported
+        } else if regions.iter().all(|x| all.contains(x)) {
             primers = regions
                 .iter()
                 .map(|x| utils::region_to_primer(x).unwrap())
                 .collect::<Vec<_>>();
+        } else {
+            writeln!(ehandle, "Supplied region is not a correct file name nor a supported region name")?;
+            process::exit(1);
         }
     } else {
         // Case when no region or primer is supplied, all the built-in regions are
         // extracted
-        let all = vec![
-            "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7",
-            "v6v9", "v7v9",
-        ];
         primers = all
             .iter()
             .map(|x| utils::region_to_primer(x).unwrap())

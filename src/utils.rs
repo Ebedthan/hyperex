@@ -9,7 +9,7 @@ extern crate log;
 extern crate niffler;
 extern crate phf;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use bio::io::fasta;
 use bio::pattern_matching::myers::MyersBuilder;
 use fern::colors::ColoredLevelConfig;
@@ -155,11 +155,17 @@ pub fn file_to_vec(filename: &str) -> Result<Vec<Vec<String>>> {
     let mut vec: Vec<Vec<String>> = Vec::new();
     let content = fs::read_to_string(filename)?;
     for line in content.lines() {
-        vec.push(
-            line.split('\t')
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>(),
-        );
+        if line.contains(',') {
+            vec.push(
+                line.split(',')
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+            );
+        } else {
+            return Err(anyhow!(
+                "File containing primer sequences is not comma separated"
+            ));
+        }
     }
     Ok(vec)
 }
@@ -641,5 +647,27 @@ mod tests {
     fn test_read_file() {
         let myfile = "tests/test.fa.gz";
         assert!(read_file(myfile).is_ok());
+    }
+
+    #[test]
+    fn test_file_to_vec() {
+        assert_eq!(
+            file_to_vec("tests/primers.txt").unwrap(),
+            vec![
+                vec![
+                    "CCTACGGGNGGCWGCAG".to_string(),
+                    "ATTACCGCGGCTGCTGG".to_string()
+                ],
+                vec![
+                    "GTGCCAGCMGCCGCGGTAA".to_string(),
+                    "GACTACHVGGGTATCTAATCC".to_string()
+                ]
+            ]
+        );
+    }
+
+    #[test]
+    fn test_file_to_vec_no_ok() {
+        assert!(file_to_vec("test.fa").is_err());
     }
 }
