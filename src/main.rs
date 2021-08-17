@@ -23,7 +23,6 @@ use std::path::Path;
 use std::process;
 use std::time::Instant;
 
-// TODO: make --region to accept primer file like forward_primer\treverse_primer\n
 fn main() -> Result<()> {
     // SET/GET REQUIREMENTS -------------------------------------------------
     // Starting up the Walltime chrono
