@@ -74,7 +74,7 @@ static PRIMER_TO_REGION: phf::Map<&'static str, &'static str> = phf_map! {
     "AACMGGATTAGATACCCKG" => "v5",
     "TAAAACTYAAAKGAATTGACGGGG" => "v6",
     "YAACGAGCGCAACCC" => "v7",
-    "CYIACTGCTGCCTCCCGTAG" => "v2",
+    "ACTGCTGCSYCCCGTAGGAGTCT" => "v2",
     "ATTACCGCGGCTGCTGG" => "v3",
     "GACTACHVGGGTATCTAATCC" => "v4",
     "CCGTCAATTYMTTTRAGT" => "v5",
@@ -95,7 +95,7 @@ static FORWARD_PRIMERS: phf::Map<&'static str, &'static str> = phf_map! {
 };
 
 static REVERSE_PRIMERS: phf::Map<&'static str, &'static str> = phf_map! {
-    "337R" => "CYIACTGCTGCCTCCCGTAG",
+    "336R" => "ACTGCTGCSYCCCGTAGGAGTCT",
     "534R" => "ATTACCGCGGCTGCTGG",
     "805R" => "GACTACHVGGGTATCTAATCC",
     "926Rb" => "CCGTCAATTYMTTTRAGT",
@@ -109,7 +109,7 @@ pub fn region_to_primer(region: &str) -> Result<Vec<String>> {
     match region {
         "v1v2" => Ok(vec![
             FORWARD_PRIMERS["27F"].to_string(),
-            REVERSE_PRIMERS["337R"].to_string(),
+            REVERSE_PRIMERS["336R"].to_string(),
         ]),
         "v1v3" => Ok(vec![
             FORWARD_PRIMERS["27F"].to_string(),
@@ -226,6 +226,7 @@ fn to_complement(primer: &str, alphabet: &str) -> String {
     let mut complement = String::new();
 
     if alphabet == "dna" {
+        // S and W complements are themselves, they are therefore ignored here
         complement = primer
             .chars()
             .map(|x| match x {
@@ -241,6 +242,7 @@ fn to_complement(primer: &str, alphabet: &str) -> String {
                 'V' => 'B',
                 'D' => 'H',
                 'H' => 'D',
+                'N' => 'N',
                 _ => x,
             })
             .collect();
@@ -260,6 +262,7 @@ fn to_complement(primer: &str, alphabet: &str) -> String {
                 'V' => 'B',
                 'D' => 'H',
                 'H' => 'D',
+                'N' => 'N',
                 _ => x,
             })
             .collect();
@@ -492,16 +495,16 @@ mod tests {
     #[test]
     fn test_complement_rna() {
         assert_eq!(
-            to_complement("AUCGAUCGAUCGAUCGRYKBVDHMX", "rna"),
-            String::from("UAGCUAGCUAGCUAGCYRMVBHDKX")
+            to_complement("AUCGAUCGAUCGAUCGRYKBVDHMXN", "rna"),
+            String::from("UAGCUAGCUAGCUAGCYRMVBHDKXN")
         );
     }
 
     #[test]
     fn test_reverse_complement() {
         assert_eq!(
-            to_reverse_complement("GTGCCAGCMGCCGCGGTAA", "dna"),
-            "TTACCGCGGCKGCTGGCAC"
+            to_reverse_complement("GTGCCAGCMGCCGCGGTAAN", "dna"),
+            "NTTACCGCGGCKGCTGGCAC"
         );
     }
 
@@ -534,7 +537,7 @@ mod tests {
     fn test_region_to_primer_ok() {
         assert_eq!(
             region_to_primer("v1v2").unwrap(),
-            vec!["AGAGTTTGATCMTGGCTCAG", "CYIACTGCTGCCTCCCGTAG"]
+            vec!["AGAGTTTGATCMTGGCTCAG", "ACTGCTGCSYCCCGTAGGAGTCT"]
         );
         assert_eq!(
             region_to_primer("v1v3").unwrap(),
