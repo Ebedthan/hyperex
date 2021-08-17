@@ -5,8 +5,6 @@
 
 use clap::{crate_version, App, AppSettings, Arg};
 
-use std::path::Path;
-
 pub fn build_app() -> App<'static, 'static> {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
         AppSettings::ColoredHelp
@@ -38,7 +36,6 @@ pub fn build_app() -> App<'static, 'static> {
             Arg::with_name("FILE")
                 .help("Input fasta file. Can be gzip'd, xz'd or bzip'd")
                 .long_help("Input fasta file. Can be gzip'd, xz'd or bzip'd")
-                .required(true)
                 .index(1),
         )
         .arg(
@@ -49,6 +46,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .conflicts_with("region")
                 .requires("reverse_primer")
                 .multiple(true)
+                .number_of_values(1)
                 .value_name("PRIMER")
         )
         .arg(
@@ -58,6 +56,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .help("Specifies reverse primer sequence. Can be a\nsequence, a regexp or a prosite pattern\nwith degenerate bases")
                 .conflicts_with("region")
                 .multiple(true)
+                .number_of_values(1)
                 .value_name("PRIMER")
         )
         .arg(
@@ -76,7 +75,6 @@ pub fn build_app() -> App<'static, 'static> {
                 .long("mismatch")
                 .short("m")
                 .value_name("N")
-                .possible_values(&["0", "1", "2", "3", "4"])
                 .hide_possible_values(true)
                 .default_value("0")
                 .takes_value(true)
@@ -86,9 +84,14 @@ pub fn build_app() -> App<'static, 'static> {
                 .help("Specifies the prefix for the output files")
                 .short("p")
                 .long("prefix")
-                .value_name("FILE")
-                .default_value("hyperex_out")
-                .validator(already_exists),
+                .value_name("PATH")
+                .default_value("hyperex_out"),
+        )
+        .arg(
+            Arg::with_name("force")
+                .help("Force output overwritting")
+                .long("force")
+                .takes_value(false),
         )
         .arg(
             Arg::with_name("quiet")
@@ -99,16 +102,4 @@ pub fn build_app() -> App<'static, 'static> {
         );
 
     app
-}
-
-fn already_exists(filename: String) -> Result<(), String> {
-    if !Path::new(format!("{}.fa", filename).as_str()).exists()
-        || !Path::new(format!("{}.gff", filename).as_str()).exists()
-    {
-        Ok(())
-    } else {
-        Err(String::from(
-            "Specified prefix already exists. Please change it using --prefix option",
-        ))
-    }
 }

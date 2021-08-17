@@ -16,8 +16,8 @@ use fern::colors::ColoredLevelConfig;
 use log::{error, info, warn};
 use phf::phf_map;
 
-use std::fs::File;
 use std::fs::OpenOptions;
+use std::fs::{self, File};
 use std::io::{self, Write};
 
 pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
@@ -105,36 +105,75 @@ static REVERSE_PRIMERS: phf::Map<&'static str, &'static str> = phf_map! {
     "1492Rmod" => "TACGGYTACCTTGTTAYGACTT",
 };
 
-pub fn region_to_primer(region: &str) -> Result<Vec<&str>> {
+pub fn region_to_primer(region: &str) -> Result<Vec<String>> {
     match region {
-        "v1v2" => Ok(vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["337R"]]),
-        "v1v3" => Ok(vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["534R"]]),
-        "v1v9" => Ok(vec![FORWARD_PRIMERS["27F"], REVERSE_PRIMERS["1492Rmod"]]),
-        "v3v4" => Ok(vec![FORWARD_PRIMERS["341F"], REVERSE_PRIMERS["805R"]]),
-        "v3v5" => Ok(vec![FORWARD_PRIMERS["341F"], REVERSE_PRIMERS["926Rb"]]),
-        "v4" => Ok(vec![FORWARD_PRIMERS["515F"], REVERSE_PRIMERS["806R"]]),
-        "v4v5" => {
-            Ok(vec![FORWARD_PRIMERS["515F-Y"], REVERSE_PRIMERS["909-928R"]])
-        }
-        "v5v7" => Ok(vec![FORWARD_PRIMERS["799F"], REVERSE_PRIMERS["1193R"]]),
-        "v6v9" => {
-            Ok(vec![FORWARD_PRIMERS["928F"], REVERSE_PRIMERS["1492Rmod"]])
-        }
-        "v7v9" => {
-            Ok(vec![FORWARD_PRIMERS["1100F"], REVERSE_PRIMERS["1492Rmod"]])
-        }
-        _ => Ok(vec![""]),
+        "v1v2" => Ok(vec![
+            FORWARD_PRIMERS["27F"].to_string(),
+            REVERSE_PRIMERS["337R"].to_string(),
+        ]),
+        "v1v3" => Ok(vec![
+            FORWARD_PRIMERS["27F"].to_string(),
+            REVERSE_PRIMERS["534R"].to_string(),
+        ]),
+        "v1v9" => Ok(vec![
+            FORWARD_PRIMERS["27F"].to_string(),
+            REVERSE_PRIMERS["1492Rmod"].to_string(),
+        ]),
+        "v3v4" => Ok(vec![
+            FORWARD_PRIMERS["341F"].to_string(),
+            REVERSE_PRIMERS["805R"].to_string(),
+        ]),
+        "v3v5" => Ok(vec![
+            FORWARD_PRIMERS["341F"].to_string(),
+            REVERSE_PRIMERS["926Rb"].to_string(),
+        ]),
+        "v4" => Ok(vec![
+            FORWARD_PRIMERS["515F"].to_string(),
+            REVERSE_PRIMERS["806R"].to_string(),
+        ]),
+        "v4v5" => Ok(vec![
+            FORWARD_PRIMERS["515F-Y"].to_string(),
+            REVERSE_PRIMERS["909-928R"].to_string(),
+        ]),
+        "v5v7" => Ok(vec![
+            FORWARD_PRIMERS["799F"].to_string(),
+            REVERSE_PRIMERS["1193R"].to_string(),
+        ]),
+        "v6v9" => Ok(vec![
+            FORWARD_PRIMERS["928F"].to_string(),
+            REVERSE_PRIMERS["1492Rmod"].to_string(),
+        ]),
+        "v7v9" => Ok(vec![
+            FORWARD_PRIMERS["1100F"].to_string(),
+            REVERSE_PRIMERS["1492Rmod"].to_string(),
+        ]),
+        _ => Ok(vec!["".to_string()]),
     }
 }
 
-pub fn combine_vec<'a>(
-    first: Vec<&'a str>,
-    second: Vec<&'a str>,
-) -> Vec<Vec<&'a str>> {
-    let mut newvec: Vec<Vec<&str>> = Vec::new();
+pub fn file_to_vec(filename: &str) -> Result<Vec<Vec<String>>> {
+    let mut vec: Vec<Vec<String>> = Vec::new();
+    let content = fs::read_to_string(filename)?;
+    for line in content.lines() {
+        vec.push(
+            line.split('\t')
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>(),
+        );
+    }
+    Ok(vec)
+}
+
+pub fn combine_vec(
+    first: Vec<String>,
+    second: Vec<String>,
+) -> Vec<Vec<String>> {
+    let mut newvec: Vec<Vec<String>> = Vec::new();
 
     for i in 0..first.len() {
-        newvec.push(vec![first[i], second[i]]);
+        let f = first[i].clone();
+        let s = second[i].clone();
+        newvec.push(vec![f, s]);
     }
 
     newvec
@@ -158,16 +197,16 @@ fn read_file(
     Ok(niffler::get_reader(raw_in)?)
 }
 
-fn primers_to_region(primers: Vec<&str>) -> String {
+fn primers_to_region(primers: Vec<String>) -> String {
     let mut first_part = "";
     let mut second_part = "";
 
-    if PRIMER_TO_REGION.contains_key(primers[0]) {
-        first_part = PRIMER_TO_REGION[primers[0]];
+    if PRIMER_TO_REGION.contains_key(&primers[0]) {
+        first_part = PRIMER_TO_REGION[&primers[0]];
     }
 
-    if PRIMER_TO_REGION.contains_key(primers[1]) {
-        second_part = PRIMER_TO_REGION[primers[1]];
+    if PRIMER_TO_REGION.contains_key(&primers[1]) {
+        second_part = PRIMER_TO_REGION[&primers[1]];
     }
 
     if first_part == "v4" && second_part == "v4" {
@@ -251,7 +290,7 @@ pub fn sequence_type(sequence: &str) -> Option<Alphabet> {
 
 pub fn get_hypervar_regions(
     file: &str,
-    primers: Vec<Vec<&str>>,
+    primers: Vec<Vec<String>>,
     prefix: &str,
     mismatch: u8,
 ) -> Result<()> {
@@ -313,7 +352,7 @@ pub fn get_hypervar_regions(
 
             let mut forward_myers = builder.build_64(primer_pair[0].as_bytes());
             let mut reverse_myers = builder.build_64(
-                to_reverse_complement(primer_pair[1], alphabet).as_bytes(),
+                to_reverse_complement(&primer_pair[1], alphabet).as_bytes(),
             );
 
             let mut forward_matches =
@@ -409,7 +448,10 @@ mod tests {
     #[test]
     fn test_primers_to_region_ok() {
         assert_eq!(
-            primers_to_region(vec!["CCTACGGGNGGCWGCAG", "GTGCCAGCMGCCGCGGTAA"]),
+            primers_to_region(vec![
+                "CCTACGGGNGGCWGCAG".to_string(),
+                "GTGCCAGCMGCCGCGGTAA".to_string()
+            ]),
             "v3v4".to_string()
         );
     }
@@ -418,8 +460,8 @@ mod tests {
     fn test_primers_to_region_ok2() {
         assert_eq!(
             primers_to_region(vec![
-                "GTGCCAGCMGCCGCGGTAA",
-                "GTGCCAGCMGCCGCGGTAA"
+                "GTGCCAGCMGCCGCGGTAA".to_string(),
+                "GTGCCAGCMGCCGCGGTAA".to_string()
             ]),
             "v4".to_string()
         );
@@ -427,7 +469,10 @@ mod tests {
 
     #[test]
     fn test_primers_to_region_empty() {
-        assert_eq!(primers_to_region(vec!["ZZZZZ", "AAAAAA"]), "".to_string());
+        assert_eq!(
+            primers_to_region(vec!["ZZZZZ".to_string(), "AAAAAA".to_string()]),
+            "".to_string()
+        );
     }
 
     #[test]
@@ -544,22 +589,30 @@ mod tests {
 
     #[test]
     fn test_combine_vec() {
-        let first = vec!["ab", "cd", "ef"];
-        let second = vec!["cd", "ef", "gh"];
+        let first = vec!["ab".to_string(), "cd".to_string(), "ef".to_string()];
+        let second = vec!["cd".to_string(), "ef".to_string(), "gh".to_string()];
         assert_eq!(
             combine_vec(first, second),
-            vec![vec!["ab", "cd"], vec!["cd", "ef"], vec!["ef", "gh"]]
+            vec![
+                vec!["ab".to_string(), "cd".to_string()],
+                vec!["cd".to_string(), "ef".to_string()],
+                vec!["ef".to_string(), "gh".to_string()]
+            ]
         );
     }
 
     #[test]
     #[should_panic]
     fn test_combine_vec_not_ok() {
-        let first = vec!["ab", "cd", "ef"];
-        let second = vec!["ab"];
+        let first = vec!["ab".to_string(), "cd".to_string(), "ef".to_string()];
+        let second = vec!["ab".to_string()];
         assert_ne!(
             combine_vec(first, second),
-            vec![vec!["ab", "cd"], vec!["cd", "ef"], vec!["ef", "gh"]]
+            vec![
+                vec!["ab".to_string(), "cd".to_string()],
+                vec!["cd".to_string(), "ef".to_string()],
+                vec!["ef".to_string(), "gh".to_string()]
+            ]
         );
     }
 
@@ -567,7 +620,10 @@ mod tests {
     fn test_get_hypervar_regions() {
         assert!(get_hypervar_regions(
             "tests/test.fa.gz",
-            vec![vec!["AGAGTTTGATCMTGGCTCAG", "TACGGYTACCTTGTTAYGACTT"]],
+            vec![vec![
+                "AGAGTTTGATCMTGGCTCAG".to_string(),
+                "TACGGYTACCTTGTTAYGACTT".to_string()
+            ]],
             "hyperex",
             0
         )

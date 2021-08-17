@@ -40,22 +40,17 @@ fn main() -> Result<()> {
     // This can be a piped data or a filename
     // So we match the value to '-' or some other value and read it
     let infile = match matches.value_of("FILE") {
-        Some(val) => {
-            if val != "-" {
-                val
-            } else {
-                let mut writer = fasta::Writer::to_file("infile.fa")?;
-                let mut records = fasta::Reader::new(io::stdin()).records();
-                while let Some(Ok(record)) = records.next() {
-                    writer.write_record(&record)?;
-                }
-
-                "infile.fa"
+        // Read from file
+        Some(value) => value,
+        // Read from STDIN
+        None => {
+            let mut writer = fasta::Writer::to_file("infile.fa")?;
+            let mut records = fasta::Reader::new(io::stdin()).records();
+            while let Some(Ok(record)) = records.next() {
+                writer.write_record(&record)?;
             }
+            "infile.fa"
         }
-        // empty value that should never been reached as clap will always check
-        // that infile is supplied
-        _ => "",
     };
 
     // Check that the supplied file exists
@@ -71,19 +66,32 @@ fn main() -> Result<()> {
 
     // Read prefix for output files
     let prefix = matches.value_of("prefix").unwrap();
+    let force = matches.is_present("force");
+    if !force
+        && (Path::new(format!("{}.fa", prefix).as_str()).exists()
+            || Path::new(format!("{}.gff", prefix).as_str()).exists())
+    {
+        writeln!(std::io::stderr(), "error: Specified prefix already exists. Please change it using --prefix option or use --force to overwrite it")?;
+        process::exit(1);
+    } else if force {
+        fs::remove_file(format!("{}.fa", prefix).as_str())?;
+        fs::remove_file(format!("{}.gff", prefix).as_str())?;
+    }
 
     // Get primers from command-line as a list of primer can be specified
-    let mut primers: Vec<Vec<&str>> = Vec::new();
+    let mut primers: Vec<Vec<String>> = Vec::new();
     if matches.is_present("forward_primer") && primers.is_empty() {
         // Read supplied forward and reverse primers
         let first = matches
             .values_of("forward_primer")
             .unwrap()
-            .collect::<Vec<_>>();
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
         let second = matches
             .values_of("reverse_primer")
             .unwrap()
-            .collect::<Vec<_>>();
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
 
         if (first.len() % 2) == 0 && first.len() != second.len() {
             error!(
@@ -96,10 +104,17 @@ fn main() -> Result<()> {
     } else if matches.is_present("region") {
         // Get supplied region names
         let regions = matches.values_of("region").unwrap().collect::<Vec<_>>();
-        primers = regions
-            .iter()
-            .map(|x| utils::region_to_primer(x).unwrap())
-            .collect::<Vec<_>>();
+
+        // Check if its a file that have been supplied or region name
+        if Path::new(regions[0]).is_file() {
+            // We will consider in this case that the region name is a file
+            primers = utils::file_to_vec(regions[0]).unwrap();
+        } else {
+            primers = regions
+                .iter()
+                .map(|x| utils::region_to_primer(x).unwrap())
+                .collect::<Vec<_>>();
+        }
     } else {
         // Case when no region or primer is supplied, all the built-in regions are
         // extracted
@@ -128,6 +143,31 @@ fn main() -> Result<()> {
             "You have allowed {} mismatch in the primer sequence",
             mismatch
         );
+    }
+
+    if force {
+        warn!("Overwriting {}.fa and {}.gff files", prefix, prefix);
+    }
+
+    // Check that required number of mismatch is not greater than
+    // the length of the longest primer
+    let cp_primers = primers.clone();
+    let longest_primer_length =
+        cp_primers.into_iter().flatten().map(|x| x.len()).max();
+
+    match longest_primer_length {
+        Some(l) => {
+            if mismatch as usize > l {
+                error!("Supplied mismatch is greater that length of primer");
+                error!("Aborting...");
+                process::exit(1);
+            }
+        }
+        None => {
+            error!("No primer sequence detected");
+            error!("Aborting...");
+            process::exit(1);
+        }
     }
 
     utils::get_hypervar_regions(infile, primers, prefix, mismatch)?;
