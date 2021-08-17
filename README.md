@@ -40,6 +40,37 @@ Moreover, one can allow a number of mismatch in the primer sequence using the `-
 
 The outputs are a fasta file containing the extracted regions and a GFF3 file indicating the extracted regions positions.
 
+
+## Installation
+
+### Using prebuilt binaries
+
+Please see the [releases page](https://github.com/Ebedthan/hyperex/releases) for prebuilt binaries for major operating system
+
+### From crates.io
+If you already have a functional rust installation you can easily do:
+
+```
+cargo install hyperex
+```
+
+And that's all!
+
+### From source
+```
+git clone https://github.com/Ebedthan/hyperex.git
+cd hyperex
+
+cargo build --release
+cargo test
+
+# To install hyperex in current directory
+cargo install --path .
+```
+
+And you are good to go!
+
+
 ## How to run hyperex ?
 
 ### By default with no options
@@ -88,30 +119,34 @@ hyperex --region v1v2 --region v3v4 file.fa
 hyperex -f ATC -f YGA -r GGCC -r TTRC file.fa
 ```
 
-## Hyperex command-line arguments
+## Usage
+
+### Command line arguments
 
 ```
-FLAGS:
-        --force      Force output overwritting
-    -q, --quiet      Decreases program verbosity
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+hyperex [FLAGS] [OPTIONS] <FILE>
+```
 
-OPTIONS:
-    -f, --forward-primer <PRIMER>...    Specifies forward primer sequence. Can be a
-                                        sequence, a regexp or a prosite pattern
-                                        with degenerate bases
-    -r, --reverse-primer <PRIMER>...    Specifies reverse primer sequence. Can be a
-                                        sequence, a regexp or a prosite pattern
-                                        with degenerate bases
-        --region <REGION>...            Specifies a hypervariable region to extract
-    -m, --mismatch <N>                  Specifies number of allowed mismatch [default: 0]
-    -p, --prefix <PATH>                 Specifies the prefix for the output files [default: hyperex_out]
+#### Flags:
+```
+    --force      Force output overwritting
+-q, --quiet      Decreases program verbosity
+-h, --help       Prints help information
+-V, --version    Prints version information
+```
 
-ARGS:
-    <FILE>    Input fasta file. Can be gzip'd, xz'd or bzip'd
+#### Options:
+```
+-f, --forward-primer <PRIMER>...    Specifies forward primer sequence. Can be a sequence with degenerate bases
+-r, --reverse-primer <PRIMER>...    Specifies reverse primer sequence. Can be a sequence with degenerate bases
+    --region <REGION>...            Specifies a hypervariable region to extract
+-m, --mismatch <N>                  Specifies number of allowed mismatch [default: 0]
+-p, --prefix <PATH>                 Specifies the prefix for the output files [default: hyperex_out]
+```
 
-Note: `hyperex -h` prints a short and concise overview while `hyperex --help` gives all details.
+#### Args:
+```
+<FILE>    Input fasta file. Can be gzip'd, xz'd or bzip'd
 ```
 
 ## Requirements
@@ -124,35 +159,6 @@ Note: `hyperex -h` prints a short and concise overview while `hyperex --help` gi
 - liblzma for xz file support
 - libbzip2 for bzip2 file support
 
-
-## Installation
-
-### Using prebuilt binaries
-
-Please see the [release page](https://github.com/Ebedthan/hyperex/releases) for prebuilt binaries for major operating system
-
-### From crates.io
-If you already have a functional rust installation you can easily do:
-
-```
-cargo install hyperex
-```
-
-And that's all!
-
-### From source
-```
-git clone https://github.com/Ebedthan/hyperex.git
-cd hyperex
-
-cargo build --release
-cargo test
-
-# To install hyperex in current directory
-cargo install --path .
-```
-
-And you are good to go!
 
 ## Note
 hyperex use colored output in help, nevertheless hyperex honors [NO_COLORS](https://no-color.org/) environment variable.

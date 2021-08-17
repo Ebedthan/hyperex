@@ -1,3 +1,4 @@
+
 # configuration file for git-cliff (0.1.0)
 
 [changelog]
@@ -6,6 +7,8 @@ header = """
 # Changelog
 All notable changes to this project will be documented in this file.\n
 """
+# template for the changelog body
+# https://tera.netlify.app/docs/#introduction
 body = """
 {% if version %}\
     ## [{{ version | replace(from="v", to="") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
