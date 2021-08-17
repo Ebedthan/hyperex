@@ -415,7 +415,7 @@ pub fn get_hypervar_regions(
                                 )?;
                             }
                             // Write region to GFF3 file
-                            gff_writer.write_all(format!("{}\thyperex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region\n", record.id(), forward_start, reverse_start + primer_pair[1].len()).as_bytes())?;
+                            gff_writer.write_all(format!("{}\thyperex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region {}\n", record.id(), forward_start, reverse_start + primer_pair[1].len(), region).as_bytes())?;
                         }
                         None => {
                             warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[1])
