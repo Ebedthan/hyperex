@@ -29,10 +29,10 @@ Hyperex (pronounced "hype rex" for hypervariable region extractor) is a tool tha
 Nevertheless, the user can choose to specify the wanted region by specifying the `--region` option or by providing the primer sequences using `--forward-primer` and `--reverse-primer`. The `--region` option takes only the region names like "v1v2" or "v4v5" while the `--forward-primer` and `--reverse-primer` takes only the sequences which can contains IUPAC ambiguities.  
 For more than one needed region, one can use multiple time the `--region`, `--forward-primer`, `reverse-primer` options to specify the wanted region. Theses option takes only one argument, but can be repeat multiple time (see Examples below).
 
-For more praticability, the user can also provide a supplied file containing primer sequences to extract the wanted region using the `--region` option. The primer sequences file should be a no header tab separated value file like:
+For more praticability, the user can also provide a supplied file containing primer sequences to extract the wanted region using the `--region` option. The primer sequences file should be a no header comma separated value file like:
 ```
-FORWARD_PRIMER_1\tREVERSE_PRIMER_1
-FORWARD_PRIMER_2\tREVERSE_PRIMER_2
+FORWARD_PRIMER_1,REVERSE_PRIMER_1
+FORWARD_PRIMER_2,REVERSE_PRIMER_2
 ...
 ```
 
