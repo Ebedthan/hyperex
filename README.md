@@ -9,6 +9,9 @@
     <a href="https://github.com/Ebedthan/hyperex/actions?query=workflow%3A%22Continuous+Deployment%22">
         <img src="https://img.shields.io/github/workflow/status/Ebedthan/hyperex/Continuous%20Deployment?style=flat&logo=GitHub%20Actions&label=deploy">
     </a>
+    <a href="https://crates.io/crates/hyperex">
+        <img src="https://img.shields.io/crates/v/hyperex.svg?style=flat">
+    </a>
     <a href="https://codecov.io/gh/Ebedthan/hyperex">
         <img src="https://codecov.io/gh/Ebedthan/hyperex/branch/main/graph/badge.svg">
     </a>
