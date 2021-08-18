@@ -21,7 +21,7 @@ jobs:
         id: git-cliff
         with:
           config: cliff.toml
-          args: -vv --latest --strip header
+          args: -vv --tag 0.1.0 --strip header
         env:
           OUTPUT: CHANGES.md
       - name: Set the release body
