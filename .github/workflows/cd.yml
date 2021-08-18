@@ -89,6 +89,7 @@ jobs:
       - name: Prepare release assets
         shell: bash
         run: |
+          mkdir -p release
           cp {LICENSE,README.md,CHANGELOG.md} release/
           if [ "${{ matrix.OS }}" = "windows-2019" ]; then
             cp target/${{ matrix.TARGET }}/release/hyperex.exe release/
