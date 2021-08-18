@@ -40,7 +40,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        build: [linux-gnu, linux-musl, win-gnu, win-msvc, win32-msvc, macos]
+        build: [linux-gnu, linux-musl, win-msvc, win32-msvc, macos]
         include:
           - BUILD: linux-gnu
             OS: ubuntu-18.04
@@ -50,10 +50,6 @@ jobs:
             OS: ubuntu-18.04
             TOOLCHAIN: stable
             TARGET: x86_64-unknown-linux-musl
-          - BUILD: win-gnu
-            OS: windows-2019
-            TOOLCHAIN: stable
-            TARGET: x86_64-pc-windows-gnu
           - BUILD: win-msvc
             OS: windows-2019
             TOOLCHAIN: stable
