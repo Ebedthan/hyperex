@@ -34,15 +34,16 @@ pub fn build_app() -> App<'static, 'static> {
         .about("Hypervariable region primer-based extractor")
         .arg(
             Arg::with_name("FILE")
-                .help("Input fasta file. Can be gzip'd, xz'd or bzip'd")
-                .long_help("Input fasta file. Can be gzip'd, xz'd or bzip'd")
+                .help("Input fasta file. With no FILE, or when FILE is -, read standard input")
+                .long_help("Input fasta file. With no FILE, or when FILE is -, read standard input. Input data can be gzip'd, xz'd or bzip'd")
                 .index(1),
         )
         .arg(
             Arg::with_name("forward_primer")
                 .short("f")
                 .long("forward-primer")
-                .help("Specifies forward primer sequence. Can be a\nsequence with degenerate bases")
+                .help("Specifies forward primer sequence")
+                .long_help("Specifies forward primer sequence which can contains IUPAC ambiguities")
                 .conflicts_with("region")
                 .requires("reverse_primer")
                 .multiple(true)
@@ -53,7 +54,8 @@ pub fn build_app() -> App<'static, 'static> {
             Arg::with_name("reverse_primer")
                 .short("r")
                 .long("reverse-primer")
-                .help("Specifies reverse primer sequence. Can be a\nsequence with degenerate bases")
+                .help("Specifies reverse primer sequence")
+                .long_help("Specifies reverse primer sequence which can contains IUPAC ambiguities")
                 .conflicts_with("region")
                 .multiple(true)
                 .number_of_values(1)
@@ -62,7 +64,11 @@ pub fn build_app() -> App<'static, 'static> {
         .arg(
             Arg::with_name("region")
                 .long("region")
-                .help("Specifies a hypervariable region to extract")
+                .help("Specifies a hypervariable region name")
+                .long_help(
+                    "Specifies 16S rRNA region name wanted. Supported values are\n\
+                    v1v2, v1v3, v1v9, v3v4, v3v5, v4, v4v5, v5v7, v6v9, v7v9"
+                )
                 .possible_values(&["v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9"])
                 .hide_possible_values(true)
                 .multiple(true)
@@ -72,6 +78,10 @@ pub fn build_app() -> App<'static, 'static> {
         .arg(
             Arg::with_name("mismatch")
                 .help("Specifies number of allowed mismatch")
+                .long_help(
+                    "Specifies the number of allowed mismatch. This cannot\n\
+                    be greater than the length of the lengthest primer"
+                )
                 .long("mismatch")
                 .short("m")
                 .value_name("N")
@@ -81,7 +91,8 @@ pub fn build_app() -> App<'static, 'static> {
         )
         .arg(
             Arg::with_name("prefix")
-                .help("Specifies the prefix for the output files")
+                .help("Specifies the prefix for output files")
+                .long_help("Specifies the prefix for output files. Paths are supported")
                 .short("p")
                 .long("prefix")
                 .value_name("PATH")

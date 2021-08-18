@@ -41,8 +41,19 @@ fn main() -> Result<()> {
     // This can be a piped data or a filename
     // So we match the value to '-' or some other value and read it
     let infile = match matches.value_of("FILE") {
-        // Read from file
-        Some(value) => value,
+        // Read from file if passed arg is not '-', otherwise read from stdin
+        Some(value) => {
+            if value == "-" {
+                let mut writer = fasta::Writer::to_file("infile.fa")?;
+                let mut records = fasta::Reader::new(io::stdin()).records();
+                while let Some(Ok(record)) = records.next() {
+                    writer.write_record(&record)?;
+                }
+                "infile.fa"
+            } else {
+                value
+            }
+        }
         // Read from STDIN
         None => {
             let mut writer = fasta::Writer::to_file("infile.fa")?;
