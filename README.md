@@ -1,15 +1,7 @@
-```
-                             _    _                                
-                            | |  | |                               
-                            | |__| |_   _ _ __   ___ _ __ _____  __
-                            |  __  | | | | '_ \ / _ \ '__/ _ \ \/ /
-                            | |  | | |_| | |_) |  __/ | |  __/>  < 
-                            |_|  |_|\__, | .__/ \___|_|  \___/_/\_\
-                                     __/ | |                       
-                                    |___/|_|   
-```
-
 <p align="center">
+    <a href="https://github.com/Ebedthan/hyperex">
+        <img src="img/hyperex.png">
+    </a>
     <br/>
     <a href="https://github.com/Ebedthan/hyperex/actions?query=workflow%3A%22Continuous+Integration%22">
         <img src="https://img.shields.io/github/workflow/status/Ebedthan/hyperex/Continuous%20Integration?style=flat&logo=GitHub%20Actions">
