@@ -20,7 +20,7 @@
 
 ## About
 
-Hyperex (pronounced "hype rex" for hypervariable region extractor) is a tool that extracts 16S ribosomal RNA (rRNA) hypervariable region based on a set of primers. By default when no option is specified, hyperex extracts all hypervariable region from the supplied sequences assuming 16S rRNA sequences. To do this it has a set of built-in primer sequences which are universal 16S primers sequences.
+Hyperex (pronounced "hyper ex" for hypervariable region extractor) is a tool that extracts 16S ribosomal RNA (rRNA) hypervariable region based on a set of primers. By default when no option is specified, hyperex extracts all hypervariable region from the supplied sequences assuming 16S rRNA sequences. To do this it has a set of built-in primer sequences which are universal 16S primers sequences.
 Nevertheless, the user can choose to specify the wanted region by specifying the `--region` option or by providing the primer sequences using `--forward-primer` and `--reverse-primer`. The `--region` option takes only the region names like "v1v2" or "v4v5" while the `--forward-primer` and `--reverse-primer` takes only the sequences which can contains IUPAC ambiguities.  
 For more than one needed region, one can use multiple time the `--region`, `--forward-primer`, `reverse-primer` options to specify the wanted region. Theses option takes only one argument, but can be repeat multiple time (see Examples below).
 
