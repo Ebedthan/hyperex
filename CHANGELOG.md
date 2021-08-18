@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.1.0] - 2021-08-18
 
 ### Bug Fixes
 
@@ -20,6 +20,24 @@ All notable changes to this project will be documented in this file.
 - Remove unwanted files
 
 - Change primers file to csv
+
+- Fix: resize logo
+
+- Fix: change logo
+
+
+### Documentation
+
+- Doc: add hyperex logo
+
+
+### Features
+
+- New feature: --region option now supports file
+
+- Feat: add continous deployment
+
+- Feat: add '-' as equivalent to stdin
 
 
 ### Refactor
