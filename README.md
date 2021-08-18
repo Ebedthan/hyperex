@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://github.com/Ebedthan/hyperex">
-        <img src="img/hyperex.png">
+        <img src="img/hyperex.png" width="300">
     </a>
     <br/>
     <a href="https://github.com/Ebedthan/hyperex/actions?query=workflow%3A%22Continuous+Integration%22">
