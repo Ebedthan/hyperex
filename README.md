@@ -2,7 +2,7 @@
     <a href="https://github.com/Ebedthan/hyperex">
         <img src="img/hyperex.png" width="300">
     </a>
-    <br/>
+    </br>
     <a href="https://github.com/Ebedthan/hyperex/actions?query=workflow%3A%22Continuous+Integration%22">
         <img src="https://img.shields.io/github/workflow/status/Ebedthan/hyperex/Continuous%20Integration?style=flat&logo=GitHub%20Actions">
     </a>
