@@ -6,7 +6,7 @@
 extern crate anyhow;
 extern crate clap;
 extern crate log;
-extern crate whoami;
+extern crate sysinfo;
 
 mod app;
 mod utils;
@@ -15,6 +15,7 @@ use anyhow::Result;
 use bio::io::fasta;
 use clap::crate_version;
 use log::{error, info, warn};
+use sysinfo::{System, SystemExt};
 
 use std::env;
 use std::fs;
@@ -25,6 +26,10 @@ use std::time::Instant;
 
 fn main() -> Result<()> {
     // SET/GET REQUIREMENTS -------------------------------------------------
+    // Setup sysinfo
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
     // Starting up the Walltime chrono
     let startime = Instant::now();
     let stderr = std::io::stderr();
@@ -155,8 +160,15 @@ fn main() -> Result<()> {
     info!("Written by Anicet Ebou");
     info!("Available at https://github.com/Ebedthan/hyperex.git");
     info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
-    info!("You are {}", whoami::username());
-    info!("Operating system is {}", whoami::platform());
+    info!(
+        "You are {}",
+        sys.host_name()
+            .unwrap_or_else(|| String::from("not teeling me who you are"))
+    );
+    info!(
+        "Operating system is {}",
+        sys.name().unwrap_or_else(|| String::from("not known"))
+    );
 
     if mismatch != 0 {
         warn!(
@@ -210,12 +222,10 @@ fn main() -> Result<()> {
         - (seconds * 1000);
 
     info!(
-        "{}",
-        format!(
-            "Walltime: {}h:{}m:{}s.{}ms",
-            hours, minutes, seconds, milliseconds
-        )
+        "Walltime: {}h:{}m:{}s.{}ms",
+        hours, minutes, seconds, milliseconds
     );
+    info!("Memory used: {} KB", sys.used_memory());
     info!("Enjoy. Share. Come back again!");
 
     Ok(())

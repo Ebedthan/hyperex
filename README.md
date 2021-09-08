@@ -23,7 +23,7 @@
 
 ## About
 
-Hyperex (pronounced "hyper ex" for hypervariable region extractor) is a tool that extracts 16S ribosomal RNA (rRNA) hypervariable region based on a set of primers. By default when no option is specified, hyperex extracts all hypervariable region from the supplied sequences assuming 16S rRNA sequences. To do this it has a set of built-in primer sequences which are universal 16S primers sequences.
+HyperEx (pronounced "Hyper Ex" for Hypervariable region Extractor) is a tool that extracts 16S ribosomal RNA (rRNA) hypervariable region based on a set of primers. By default when no option is specified, hyperex extracts all hypervariable region from the supplied sequences assuming 16S rRNA sequences. To do this it has a set of built-in primer sequences which are universal 16S primers sequences.
 Nevertheless, the user can choose to specify the wanted region by specifying the `--region` option or by providing the primer sequences using `--forward-primer` and `--reverse-primer`. The `--region` option takes only the region names like "v1v2" or "v4v5" while the `--forward-primer` and `--reverse-primer` takes only the sequences which can contains IUPAC ambiguities.  
 For more than one needed region, one can use multiple time the `--region`, `--forward-primer`, `reverse-primer` options to specify the wanted region. Theses option takes only one argument, but can be repeat multiple time (see Examples below).
 
@@ -74,32 +74,40 @@ And you are good to go!
 ### By default with no options
 
 ```
+# reading data from a specified file
 hyperex file.fa
 
+# reading data from standard input
 cat file.fa | hyperex
 ```
 
 ### Using built-in 16S primer names
 
 ```
+# reading data from a specified file
 hyperex -f 27F -r 337R file.fa.gz
 
+# reading data from standard input
 zcat file.fa.gz | hyperex -f 27F -r 337R
 ```
 
 ### Using built-in 16S region names
 
 ```
+# reading data from a specified file
 hyperex --region v3v4 file.fa.xz
 
+# reading data from standard input
 xzcat file.fa.xz | hyperex --region v3v4
 ```
 
 ### Using custom primer sequences
 
 ```
+# reading data from a specified file
 hyperex -p prefix --forward-primer ATCG --reverse-primer TYAATG file.fa.bz2
 
+# reading data from standard input
 bzcat file.fa.bz2 | hyperex -p prefix --forward-primer ATCG --reverse-primer TYAATG
 ```
 

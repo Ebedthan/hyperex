@@ -1,6 +1,6 @@
 [package]
 name = "hyperex"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
 exclude = ["test/*", ".github/*", ".cargo/*"]
@@ -9,7 +9,7 @@ homepage = "https://github.com/Ebedthan/hyperex"
 readme = "README.md"
 license = "MIT"
 categories = ["command-line-utilities"]
-keywords = ["bioinformatics"] 
+keywords = ["bioinformatics", "16S rRNA"] 
 
 [dependencies]
 anyhow        = "1.0.40"
@@ -20,7 +20,7 @@ fern          = {version = "0.5", features = ["colored"] }
 log           = "0.4"
 niffler       = "2.3.2"
 phf           = { version = "0.9", features = ["macros"] }
-whoami        = "1.1.2"
+sysinfo       = "0.20"
 
 [dev-dependencies]
 tempfile      = "3"
