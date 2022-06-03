@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use clap::{crate_version, Command, ColorChoice, AppSettings, Arg};
+use clap::{crate_version, AppSettings, Arg, ColorChoice, Command};
 
 pub fn build_app() -> Command<'static> {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
