@@ -3,28 +3,21 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use clap::{crate_version, App, AppSettings, Arg};
+use clap::{crate_version, Command, ColorChoice, AppSettings, Arg};
 
-pub fn build_app() -> App<'static, 'static> {
+pub fn build_app() -> Command<'static> {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
-        AppSettings::ColoredHelp
+        ColorChoice::Always
     } else {
-        AppSettings::ColorNever
+        ColorChoice::Never
     };
 
-    let app = App::new("hyperex")
+    let app = Command::new("hyperex")
         .version(crate_version!())
-        .usage(
-            "hyperex [FLAGS/OPTIONS] <FILE>\n\n\
-            EXAMPLES:\n\
-            \t# With built-in 16S primer names\n\
-            \thyperex -f 27F -r 337R file.fa.gz\n\n\
-            \t# With built-in 16S region names\n\
-            \thyperex --region v3v4 file.fa.xz\n\n\
-            \t# With custom primer sequences\n\
-            \thyperex -o outfile --forward-primer ATCG --reverse-primer TYAATG file.fa.bz2"
+        .override_usage(
+            "hyperex [options] [<FILE>]"
         )
-        .setting(clap_color_setting)
+        .color(clap_color_setting)
         .setting(AppSettings::DeriveDisplayOrder)
         .after_help(
             "Note: `hyperex -h` prints a short and concise overview while `hyperex --help` gives all \
@@ -33,81 +26,81 @@ pub fn build_app() -> App<'static, 'static> {
         .author("Anicet Ebou, anicet.ebou@gmail.com")
         .about("Hypervariable region primer-based extractor")
         .arg(
-            Arg::with_name("FILE")
-                .help("Input fasta file. With no FILE, or when FILE is -, read standard input")
-                .long_help("Input fasta file. With no FILE, or when FILE is -, read standard input. Input data can be gzip'd, xz'd or bzip'd")
+            Arg::new("FILE")
+                .help("input fasta file or stdin")
+                .long_help("input fasta file. With no FILE, or when FILE is -, read standard input. Input data can be gzip'd, xz'd or bzip'd")
                 .index(1),
         )
         .arg(
-            Arg::with_name("forward_primer")
-                .short("f")
+            Arg::new("forward_primer")
+                .short('f')
                 .long("forward-primer")
-                .help("Specifies forward primer sequence")
+                .help("forward primer sequence")
                 .long_help("Specifies forward primer sequence which can contains IUPAC ambiguities")
                 .conflicts_with("region")
                 .requires("reverse_primer")
-                .multiple(true)
+                .multiple_occurrences(true)
                 .number_of_values(1)
-                .value_name("PRIMER")
+                .value_name("STR")
         )
         .arg(
-            Arg::with_name("reverse_primer")
-                .short("r")
+            Arg::new("reverse_primer")
+                .short('r')
                 .long("reverse-primer")
-                .help("Specifies reverse primer sequence")
+                .help("reverse primer sequence")
                 .long_help("Specifies reverse primer sequence which can contains IUPAC ambiguities")
                 .conflicts_with("region")
-                .multiple(true)
+                .multiple_occurrences(true)
                 .number_of_values(1)
-                .value_name("PRIMER")
+                .value_name("STR")
         )
         .arg(
-            Arg::with_name("region")
+            Arg::new("region")
                 .long("region")
-                .help("Specifies a hypervariable region name")
+                .help("hypervariable region name")
                 .long_help(
                     "Specifies 16S rRNA region name wanted. Supported values are\n\
                     v1v2, v1v3, v1v9, v3v4, v3v5, v4, v4v5, v5v7, v6v9, v7v9"
                 )
                 .possible_values(&["v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9"])
                 .hide_possible_values(true)
-                .multiple(true)
+                .multiple_occurrences(true)
                 .number_of_values(1)
-                .value_name("REGION")
+                .value_name("sTR")
         )
         .arg(
-            Arg::with_name("mismatch")
-                .help("Specifies number of allowed mismatch")
+            Arg::new("mismatch")
+                .help("number of allowed mismatch")
                 .long_help(
                     "Specifies the number of allowed mismatch. This cannot\n\
                     be greater than the length of the lengthest primer"
                 )
                 .long("mismatch")
-                .short("m")
+                .short('m')
                 .value_name("N")
                 .hide_possible_values(true)
                 .default_value("0")
                 .takes_value(true)
         )
         .arg(
-            Arg::with_name("prefix")
-                .help("Specifies the prefix for output files")
+            Arg::new("prefix")
+                .help("prefix of output files")
                 .long_help("Specifies the prefix for output files. Paths are supported")
-                .short("p")
+                .short('p')
                 .long("prefix")
                 .value_name("PATH")
                 .default_value("hyperex_out"),
         )
         .arg(
-            Arg::with_name("force")
-                .help("Force output overwritting")
+            Arg::new("force")
+                .help("overwrite output")
                 .long("force")
                 .takes_value(false),
         )
         .arg(
-            Arg::with_name("quiet")
-                .long_help("Decreases program verbosity")
-                .short("q")
+            Arg::new("quiet")
+                .long_help("decreases program verbosity")
+                .short('q')
                 .long("quiet")
                 .takes_value(false),
         );

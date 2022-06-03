@@ -1,9 +1,9 @@
 [package]
 name = "hyperex"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
-exclude = ["test/*", ".github/*", ".cargo/*"]
+exclude = ["test/*", ".github/*"]
 description = "Hypervariable region primer-based extracted"
 homepage = "https://github.com/Ebedthan/hyperex"
 readme = "README.md"
@@ -13,13 +13,13 @@ keywords = ["bioinformatics", "16S rRNA"]
 
 [dependencies]
 anyhow        = "1.0.40"
-bio           = "0.35"
+bio           = "0.41"
 chrono        = "0.4"
-clap          = "~2.33"
-fern          = {version = "0.5", features = ["colored"] }
+clap          = { version = "3.1", features = ["cargo"] }
+fern          = { version = "0.6", features = ["colored"] }
 log           = "0.4"
-niffler       = "2.3.2"
-phf           = { version = "0.9", features = ["macros"] }
+niffler       = "2.4"
+phf           = { version = "0.10", features = ["macros"] }
 sysinfo       = "0.20"
 
 [dev-dependencies]
