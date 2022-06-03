@@ -84,12 +84,13 @@ fn main() -> Result<()> {
     // Read prefix for output files
     let prefix = matches.value_of("prefix").unwrap();
     let force = matches.is_present("force");
-    if !force
-        && (Path::new(format!("{}.fa", prefix).as_str()).exists()
-            || Path::new(format!("{}.gff", prefix).as_str()).exists())
-    {
-        writeln!(std::io::stderr(), "error: Specified prefix already exists. Please change it using --prefix option or use --force to overwrite it")?;
-        process::exit(1);
+    if !force {
+        if Path::new(format!("{}.fa", prefix).as_str()).exists()
+            || Path::new(format!("{}.gff", prefix).as_str()).exists()
+        {
+            writeln!(std::io::stderr(), "error: file already exists. Please change it using --prefix option or use --force to overwrite it")?;
+            process::exit(1);
+        }
     } else if force {
         fs::remove_file(format!("{}.fa", prefix).as_str())?;
         fs::remove_file(format!("{}.gff", prefix).as_str())?;
@@ -101,19 +102,13 @@ fn main() -> Result<()> {
         "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9",
         "v7v9",
     ];
+
     // Case the user go for -f and -r options
     if matches.is_present("forward_primer") && primers.is_empty() {
         // Read supplied forward and reverse primers
-        let first = matches
-            .values_of("forward_primer")
-            .unwrap()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>();
-        let second = matches
-            .values_of("reverse_primer")
-            .unwrap()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>();
+        let first: Vec<String> = matches.values_of_t("forward_primer")?;
+        let second: Vec<String> = matches.values_of_t("reverse_primer")?;
+
         // Primers should be in pairs!
         if (first.len() % 2) == 0 && first.len() != second.len() {
             writeln!(ehandle,
@@ -128,14 +123,14 @@ fn main() -> Result<()> {
     // Case user goes for --region option
     } else if matches.is_present("region") {
         // Get supplied region names which can be multiple
-        let regions = matches.values_of("region").unwrap().collect::<Vec<_>>();
+        let regions: Vec<String> = matches.values_of_t("region")?;
 
         // Check if its a file that have been supplied or region name
-        if Path::new(regions[0]).is_file() {
+        if Path::new(&regions[0]).is_file() {
             // We will consider in this case that the region name is a file
-            primers = utils::file_to_vec(regions[0]).unwrap();
+            primers = utils::file_to_vec(&regions[0]).unwrap();
         // Check that the region name is supported
-        } else if regions.iter().all(|x| all.contains(x)) {
+        } else if regions.iter().all(|x| all.contains(&x.as_str())) {
             primers = regions
                 .iter()
                 .map(|x| utils::region_to_primer(x).unwrap())
@@ -152,8 +147,8 @@ fn main() -> Result<()> {
             .map(|x| utils::region_to_primer(x).unwrap())
             .collect::<Vec<_>>();
     }
-    let mis = matches.value_of("mismatch").unwrap().to_string();
-    let mismatch = mis.parse::<u8>()?;
+
+    let mismatch: u8 = matches.value_of_t("mismatch")?;
 
     // STARTING CORE PROGRAM ------------------------------------------------
     info!("This is hyperex v{}", crate_version!());

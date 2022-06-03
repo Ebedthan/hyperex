@@ -66,7 +66,7 @@ pub fn build_app() -> Command<'static> {
                 .hide_possible_values(true)
                 .multiple_occurrences(true)
                 .number_of_values(1)
-                .value_name("sTR")
+                .value_name("STR")
         )
         .arg(
             Arg::new("mismatch")
