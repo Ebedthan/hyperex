@@ -13,14 +13,13 @@ keywords = ["bioinformatics", "16S rRNA"]
 
 [dependencies]
 anyhow        = "1.0.40"
-bio           = "0.41"
+bio           = "1.6"
 chrono        = "0.4"
-clap          = { version = "3.1", features = ["cargo"] }
+clap          = { version = "4.5", features = ["cargo"] }
 fern          = { version = "0.6", features = ["colored"] }
 log           = "0.4"
-niffler       = "2.4"
-phf           = { version = "0.10", features = ["macros"] }
-sysinfo       = "0.20"
+niffler       = "2.5"
+phf           = { version = "0.11", features = ["macros"] }
 
 [dev-dependencies]
 tempfile      = "3"

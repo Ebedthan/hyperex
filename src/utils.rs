@@ -1,26 +1,19 @@
-// Copyright 2021-2022 Anicet Ebou.
+// Copyright 2021-2024 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-extern crate chrono;
-extern crate fern;
-extern crate log;
-extern crate niffler;
-extern crate phf;
-
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context};
 use bio::io::fasta;
 use bio::pattern_matching::myers::MyersBuilder;
 use fern::colors::ColoredLevelConfig;
 use log::{error, info, warn};
 use phf::phf_map;
 
-use std::fs::OpenOptions;
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 
-pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
+pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
     let colors = ColoredLevelConfig::default();
     let mut base_config = fern::Dispatch::new();
 
@@ -105,7 +98,7 @@ static REVERSE_PRIMERS: phf::Map<&'static str, &'static str> = phf_map! {
     "1492Rmod" => "TACGGYTACCTTGTTAYGACTT",
 };
 
-pub fn region_to_primer(region: &str) -> Result<Vec<String>> {
+pub fn region_to_primer(region: &str) -> anyhow::Result<Vec<String>> {
     match region {
         "v1v2" => Ok(vec![
             FORWARD_PRIMERS["27F"].to_string(),
@@ -151,7 +144,7 @@ pub fn region_to_primer(region: &str) -> Result<Vec<String>> {
     }
 }
 
-pub fn file_to_vec(filename: &str) -> Result<Vec<Vec<String>>> {
+pub fn file_to_vec(filename: &str) -> anyhow::Result<Vec<Vec<String>>> {
     let mut vec: Vec<Vec<String>> = Vec::new();
     let content = fs::read_to_string(filename)?;
     for line in content.lines() {
@@ -170,34 +163,17 @@ pub fn file_to_vec(filename: &str) -> Result<Vec<Vec<String>>> {
     Ok(vec)
 }
 
-pub fn combine_vec(
-    first: Vec<String>,
-    second: Vec<String>,
-) -> Vec<Vec<String>> {
-    let mut newvec: Vec<Vec<String>> = Vec::new();
-
-    for i in 0..first.len() {
-        let f = first[i].clone();
-        let s = second[i].clone();
-        newvec.push(vec![f, s]);
-    }
-
-    newvec
+pub fn combine_vec(first: Vec<&str>, second: Vec<&str>) -> Vec<Vec<String>> {
+    first
+        .iter()
+        .zip(second)
+        .map(|x| vec![x.0.to_string(), x.1.to_string()])
+        .collect::<Vec<Vec<String>>>()
 }
 
-/// Get reader and compression format of file
-///
-/// # Example
-/// ```rust
-/// # use std::path::Path;
-///
-/// let path = Path::new("path/to/file");
-/// let (reader, compression) = read_file(&path);
-/// ```
-///
 fn read_file(
     filename: &str,
-) -> Result<(Box<dyn io::Read>, niffler::compression::Format)> {
+) -> anyhow::Result<(Box<dyn io::Read>, niffler::compression::Format)> {
     let raw_in = Box::new(io::BufReader::new(File::open(filename)?));
 
     Ok(niffler::get_reader(raw_in)?)
@@ -302,7 +278,7 @@ pub fn get_hypervar_regions(
     primers: Vec<Vec<String>>,
     prefix: &str,
     mismatch: u8,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let (reader, mut _compression) =
         read_file(file).with_context(|| "Cannot read file")?;
 
@@ -598,8 +574,8 @@ mod tests {
 
     #[test]
     fn test_combine_vec() {
-        let first = vec!["ab".to_string(), "cd".to_string(), "ef".to_string()];
-        let second = vec!["cd".to_string(), "ef".to_string(), "gh".to_string()];
+        let first = vec!["ab", "cd", "ef"];
+        let second = vec!["cd", "ef", "gh"];
         assert_eq!(
             combine_vec(first, second),
             vec![
@@ -611,10 +587,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_combine_vec_not_ok() {
-        let first = vec!["ab".to_string(), "cd".to_string(), "ef".to_string()];
-        let second = vec!["ab".to_string()];
+        let first = vec!["ab", "cd", "ef"];
+        let second = vec!["ab"];
         assert_ne!(
             combine_vec(first, second),
             vec![

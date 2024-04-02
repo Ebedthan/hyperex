@@ -1,21 +1,14 @@
-// Copyright 2021-2022 Anicet Ebou.
+// Copyright 2021-2024 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-extern crate anyhow;
-extern crate clap;
-extern crate log;
-extern crate sysinfo;
-
 mod app;
 mod utils;
 
-use anyhow::Result;
 use bio::io::fasta;
 use clap::crate_version;
 use log::{error, info, warn};
-use sysinfo::{System, SystemExt};
 
 use std::env;
 use std::fs;
@@ -24,12 +17,7 @@ use std::path::Path;
 use std::process;
 use std::time::Instant;
 
-fn main() -> Result<()> {
-    // SET/GET REQUIREMENTS -------------------------------------------------
-    // Setup sysinfo
-    let mut sys = System::new_all();
-    sys.refresh_all();
-
+fn main() -> anyhow::Result<()> {
     // Starting up the Walltime chrono
     let startime = Instant::now();
     let stderr = std::io::stderr();
@@ -39,13 +27,13 @@ fn main() -> Result<()> {
     let matches = app::build_app().get_matches_from(env::args_os());
 
     // is --quiet option specified by the user?
-    let quiet = matches.is_present("quiet");
+    let quiet = matches.get_flag("quiet");
     utils::setup_logging(quiet)?; // Settting up logging
 
     // Reading input data
     // This can be a piped data or a filename
     // So we match the value to '-' or some other value and read it
-    let infile = match matches.value_of("FILE") {
+    let infile = match matches.get_one::<String>("FILE") {
         // Read from file if passed arg is not '-', otherwise read from stdin
         Some(value) => {
             if value == "-" {
@@ -82,8 +70,8 @@ fn main() -> Result<()> {
     }
 
     // Read prefix for output files
-    let prefix = matches.value_of("prefix").unwrap();
-    let force = matches.is_present("force");
+    let prefix = matches.get_one::<String>("prefix").unwrap();
+    let force = matches.get_flag("force");
     if !force {
         if Path::new(format!("{}.fa", prefix).as_str()).exists()
             || Path::new(format!("{}.gff", prefix).as_str()).exists()
@@ -98,16 +86,24 @@ fn main() -> Result<()> {
 
     // Get primers from command-line as a list of primer can be specified
     let mut primers: Vec<Vec<String>> = Vec::new();
-    let all = vec![
+    let all = [
         "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9",
         "v7v9",
     ];
 
     // Case the user go for -f and -r options
-    if matches.is_present("forward_primer") && primers.is_empty() {
+    if matches.get_flag("forward_primer") && primers.is_empty() {
         // Read supplied forward and reverse primers
-        let first: Vec<String> = matches.values_of_t("forward_primer")?;
-        let second: Vec<String> = matches.values_of_t("reverse_primer")?;
+        let first: Vec<&str> = matches
+            .get_many::<String>("forward_primer")
+            .unwrap_or_default()
+            .map(|v| v.as_str())
+            .collect::<Vec<_>>();
+        let second: Vec<&str> = matches
+            .get_many::<String>("reverse_primer")
+            .unwrap_or_default()
+            .map(|v| v.as_str())
+            .collect::<Vec<_>>();
 
         // Primers should be in pairs!
         if (first.len() % 2) == 0 && first.len() != second.len() {
@@ -121,16 +117,20 @@ fn main() -> Result<()> {
         primers = utils::combine_vec(first, second);
 
     // Case user goes for --region option
-    } else if matches.is_present("region") {
+    } else if matches.get_flag("region") {
         // Get supplied region names which can be multiple
-        let regions: Vec<String> = matches.values_of_t("region")?;
+        let regions: Vec<&str> = matches
+            .get_many::<String>("region")
+            .unwrap_or_default()
+            .map(|v| v.as_str())
+            .collect::<Vec<_>>();
 
         // Check if its a file that have been supplied or region name
         if Path::new(&regions[0]).is_file() {
             // We will consider in this case that the region name is a file
-            primers = utils::file_to_vec(&regions[0]).unwrap();
+            primers = utils::file_to_vec(regions[0]).unwrap();
         // Check that the region name is supported
-        } else if regions.iter().all(|x| all.contains(&x.as_str())) {
+        } else if regions.iter().all(|x| all.contains(x)) {
             primers = regions
                 .iter()
                 .map(|x| utils::region_to_primer(x).unwrap())
@@ -148,22 +148,13 @@ fn main() -> Result<()> {
             .collect::<Vec<_>>();
     }
 
-    let mismatch: u8 = matches.value_of_t("mismatch")?;
+    let mismatch: u8 = *matches.get_one("mismatch").unwrap();
 
     // STARTING CORE PROGRAM ------------------------------------------------
     info!("This is hyperex v{}", crate_version!());
     info!("Written by Anicet Ebou");
     info!("Available at https://github.com/Ebedthan/hyperex.git");
     info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
-    info!(
-        "You are {}",
-        sys.host_name()
-            .unwrap_or_else(|| String::from("not teeling me who you are"))
-    );
-    info!(
-        "Operating system is {}",
-        sys.name().unwrap_or_else(|| String::from("not known"))
-    );
 
     if mismatch != 0 {
         warn!(
@@ -220,7 +211,6 @@ fn main() -> Result<()> {
         "Walltime: {}h:{}m:{}s.{}ms",
         hours, minutes, seconds, milliseconds
     );
-    info!("Memory used: {} KB", sys.used_memory());
     info!("Enjoy. Share. Come back again!");
 
     Ok(())

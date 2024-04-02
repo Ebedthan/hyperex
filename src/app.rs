@@ -1,24 +1,23 @@
-// Copyright 2021-2022 Anicet Ebou.
+// Copyright 2021-2024 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use clap::{crate_version, AppSettings, Arg, ColorChoice, Command};
+use clap::{crate_version, value_parser, Arg, ArgAction, ColorChoice, Command};
 
-pub fn build_app() -> Command<'static> {
+pub fn build_app() -> Command {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
         ColorChoice::Always
     } else {
         ColorChoice::Never
     };
 
-    let app = Command::new("hyperex")
+    Command::new("hyperex")
         .version(crate_version!())
         .override_usage(
             "hyperex [options] [<FILE>]"
         )
         .color(clap_color_setting)
-        .setting(AppSettings::DeriveDisplayOrder)
         .after_help(
             "Note: `hyperex -h` prints a short and concise overview while `hyperex --help` gives all \
                  details.",
@@ -39,7 +38,7 @@ pub fn build_app() -> Command<'static> {
                 .long_help("Specifies forward primer sequence which can contains IUPAC ambiguities")
                 .conflicts_with("region")
                 .requires("reverse_primer")
-                .multiple_occurrences(true)
+                .num_args(1..)
                 .number_of_values(1)
                 .value_name("STR")
         )
@@ -50,7 +49,7 @@ pub fn build_app() -> Command<'static> {
                 .help("reverse primer sequence")
                 .long_help("Specifies reverse primer sequence which can contains IUPAC ambiguities")
                 .conflicts_with("region")
-                .multiple_occurrences(true)
+                .num_args(1..)
                 .number_of_values(1)
                 .value_name("STR")
         )
@@ -62,9 +61,9 @@ pub fn build_app() -> Command<'static> {
                     "Specifies 16S rRNA region name wanted. Supported values are\n\
                     v1v2, v1v3, v1v9, v3v4, v3v5, v4, v4v5, v5v7, v6v9, v7v9"
                 )
-                .possible_values(&["v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9"])
+                .value_parser(clap::builder::PossibleValuesParser::new(["v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9"]))
                 .hide_possible_values(true)
-                .multiple_occurrences(true)
+                .num_args(1..)
                 .number_of_values(1)
                 .value_name("STR")
         )
@@ -78,9 +77,9 @@ pub fn build_app() -> Command<'static> {
                 .long("mismatch")
                 .short('m')
                 .value_name("N")
+                .value_parser(value_parser!(u8))
                 .hide_possible_values(true)
                 .default_value("0")
-                .takes_value(true)
         )
         .arg(
             Arg::new("prefix")
@@ -95,15 +94,23 @@ pub fn build_app() -> Command<'static> {
             Arg::new("force")
                 .help("overwrite output")
                 .long("force")
-                .takes_value(false),
+                .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("quiet")
                 .long_help("decreases program verbosity")
                 .short('q')
                 .long("quiet")
-                .takes_value(false),
-        );
+                .action(ArgAction::SetTrue),
+        )
+}
 
-    app
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn verify_cmd() {
+        build_app().debug_assert();
+    }
 }
