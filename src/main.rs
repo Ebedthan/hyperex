@@ -1,4 +1,4 @@
-// Copyright 2021-2024 Anicet Ebou.
+// Copyright 2021-2025 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
@@ -7,10 +7,9 @@ mod app;
 mod utils;
 
 use bio::io::fasta;
-use clap::crate_version;
+use clap::Parser;
 use log::{error, info, warn};
 
-use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
@@ -24,16 +23,16 @@ fn main() -> anyhow::Result<()> {
     let mut ehandle = stderr.lock();
 
     // Get command-line arguments (see app.rs)
-    let matches = app::build_app().get_matches_from(env::args_os());
+    let cli = app::Args::parse();
 
     // is --quiet option specified by the user?
-    let quiet = matches.get_flag("quiet");
+    let quiet = cli.quiet;
     utils::setup_logging(quiet)?; // Settting up logging
 
     // Reading input data
     // This can be a piped data or a filename
     // So we match the value to '-' or some other value and read it
-    let infile = match matches.get_one::<String>("FILE") {
+    let infile = match cli.file {
         // Read from file if passed arg is not '-', otherwise read from stdin
         Some(value) => {
             if value == "-" {
@@ -42,7 +41,7 @@ fn main() -> anyhow::Result<()> {
                 while let Some(Ok(record)) = records.next() {
                     writer.write_record(&record)?;
                 }
-                "infile.fa"
+                String::from("infile.fa")
             } else {
                 value
             }
@@ -54,13 +53,13 @@ fn main() -> anyhow::Result<()> {
             while let Some(Ok(record)) = records.next() {
                 writer.write_record(&record)?;
             }
-            "infile.fa"
+            String::from("infile.fa")
         }
     };
 
     // Check that the supplied file exists
     if infile != "infile.fa" {
-        match Path::new(infile).exists() {
+        match Path::new(&infile).exists() {
             true => (),
             false => {
                 writeln!(ehandle, "error: No such file or directory. Is the path correct? Do you have permission to read the file?")?;
@@ -70,8 +69,8 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Read prefix for output files
-    let prefix = matches.get_one::<String>("prefix").unwrap();
-    let force = matches.get_flag("force");
+    let prefix = cli.prefix;
+    let force = cli.force;
     if !force {
         if Path::new(format!("{}.fa", prefix).as_str()).exists()
             || Path::new(format!("{}.gff", prefix).as_str()).exists()
@@ -87,23 +86,14 @@ fn main() -> anyhow::Result<()> {
     // Get primers from command-line as a list of primer can be specified
     let mut primers: Vec<Vec<String>> = Vec::new();
     let all = [
-        "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9",
-        "v7v9",
+        "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9",
     ];
 
     // Case the user go for -f and -r options
-    if matches.get_flag("forward_primer") && primers.is_empty() {
+    if cli.forward.is_some() && primers.is_empty() {
         // Read supplied forward and reverse primers
-        let first: Vec<&str> = matches
-            .get_many::<String>("forward_primer")
-            .unwrap_or_default()
-            .map(|v| v.as_str())
-            .collect::<Vec<_>>();
-        let second: Vec<&str> = matches
-            .get_many::<String>("reverse_primer")
-            .unwrap_or_default()
-            .map(|v| v.as_str())
-            .collect::<Vec<_>>();
+        let first: Vec<String> = cli.forward.unwrap_or_default();
+        let second: Vec<String> = cli.reverse.unwrap_or_default();
 
         // Primers should be in pairs!
         if (first.len() % 2) == 0 && first.len() != second.len() {
@@ -117,26 +107,28 @@ fn main() -> anyhow::Result<()> {
         primers = utils::combine_vec(first, second);
 
     // Case user goes for --region option
-    } else if matches.get_flag("region") {
+    } else if cli.region.is_some() {
         // Get supplied region names which can be multiple
-        let regions: Vec<&str> = matches
-            .get_many::<String>("region")
-            .unwrap_or_default()
-            .map(|v| v.as_str())
-            .collect::<Vec<_>>();
+        let regions: Vec<app::Region> = cli.region.unwrap_or_default();
 
         // Check if its a file that have been supplied or region name
-        if Path::new(&regions[0]).is_file() {
+        if Path::new(&regions[0].to_string()).is_file() {
             // We will consider in this case that the region name is a file
-            primers = utils::file_to_vec(regions[0]).unwrap();
+            primers = utils::file_to_vec(&regions[0].to_string()).unwrap();
         // Check that the region name is supported
-        } else if regions.iter().all(|x| all.contains(x)) {
+        } else if regions
+            .iter()
+            .all(|x| all.contains(&&x.to_string().as_str()))
+        {
             primers = regions
                 .iter()
-                .map(|x| utils::region_to_primer(x).unwrap())
+                .map(|x| utils::region_to_primer(&x.to_string()).unwrap())
                 .collect::<Vec<_>>();
         } else {
-            writeln!(ehandle, "Supplied region is not a correct file name nor a supported region name")?;
+            writeln!(
+                ehandle,
+                "Supplied region is not a correct file name nor a supported region name"
+            )?;
             process::exit(1);
         }
     } else {
@@ -148,10 +140,10 @@ fn main() -> anyhow::Result<()> {
             .collect::<Vec<_>>();
     }
 
-    let mismatch: u8 = *matches.get_one("mismatch").unwrap();
+    let mismatch: u8 = cli.mismatch;
 
     // STARTING CORE PROGRAM ------------------------------------------------
-    info!("This is hyperex v{}", crate_version!());
+    info!("This is hyperex v0.2");
     info!("Written by Anicet Ebou");
     info!("Available at https://github.com/Ebedthan/hyperex.git");
     info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
@@ -170,8 +162,7 @@ fn main() -> anyhow::Result<()> {
     // Check that required number of mismatch is not greater than
     // the length of the longest primer
     let cp_primers = primers.clone();
-    let longest_primer_length =
-        cp_primers.into_iter().flatten().map(|x| x.len()).max();
+    let longest_primer_length = cp_primers.into_iter().flatten().map(|x| x.len()).max();
 
     match longest_primer_length {
         Some(l) => {
@@ -188,7 +179,7 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    utils::get_hypervar_regions(infile, primers, prefix, mismatch)?;
+    utils::get_hypervar_regions(&infile, primers, &prefix, mismatch)?;
     info!("Done getting hypervariable regions");
 
     // FINISHING ------------------------------------------------------------
@@ -200,12 +191,8 @@ fn main() -> anyhow::Result<()> {
     let y = 60 * 60 * 1000;
     let hours = duration.as_millis() / y;
     let minutes = (duration.as_millis() - (hours * y)) / (y / 60);
-    let seconds =
-        (duration.as_millis() - (hours * y) - (minutes * (y / 60))) / 1000;
-    let milliseconds = duration.as_millis()
-        - (hours * y)
-        - (minutes * (y / 60))
-        - (seconds * 1000);
+    let seconds = (duration.as_millis() - (hours * y) - (minutes * (y / 60))) / 1000;
+    let milliseconds = duration.as_millis() - (hours * y) - (minutes * (y / 60)) - (seconds * 1000);
 
     info!(
         "Walltime: {}h:{}m:{}s.{}ms",

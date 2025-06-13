@@ -163,7 +163,7 @@ pub fn file_to_vec(filename: &str) -> anyhow::Result<Vec<Vec<String>>> {
     Ok(vec)
 }
 
-pub fn combine_vec(first: Vec<&str>, second: Vec<&str>) -> Vec<Vec<String>> {
+pub fn combine_vec(first: Vec<String>, second: Vec<String>) -> Vec<Vec<String>> {
     first
         .iter()
         .zip(second)
@@ -171,9 +171,7 @@ pub fn combine_vec(first: Vec<&str>, second: Vec<&str>) -> Vec<Vec<String>> {
         .collect::<Vec<Vec<String>>>()
 }
 
-fn read_file(
-    filename: &str,
-) -> anyhow::Result<(Box<dyn io::Read>, niffler::compression::Format)> {
+fn read_file(filename: &str) -> anyhow::Result<(Box<dyn io::Read>, niffler::compression::Format)> {
     let raw_in = Box::new(io::BufReader::new(File::open(filename)?));
 
     Ok(niffler::get_reader(raw_in)?)
@@ -279,8 +277,7 @@ pub fn get_hypervar_regions(
     prefix: &str,
     mismatch: u8,
 ) -> anyhow::Result<()> {
-    let (reader, mut _compression) =
-        read_file(file).with_context(|| "Cannot read file")?;
+    let (reader, mut _compression) = read_file(file).with_context(|| "Cannot read file")?;
 
     let mut records = fasta::Reader::new(reader).records();
 
@@ -336,68 +333,51 @@ pub fn get_hypervar_regions(
             let region = primers_to_region(primer_pair.to_vec());
 
             let mut forward_myers = builder.build_64(primer_pair[0].as_bytes());
-            let mut reverse_myers = builder.build_64(
-                to_reverse_complement(&primer_pair[1], alphabet).as_bytes(),
-            );
+            let mut reverse_myers =
+                builder.build_64(to_reverse_complement(&primer_pair[1], alphabet).as_bytes());
 
-            let mut forward_matches =
-                forward_myers.find_all_lazy(seq, mismatch);
-            let mut reverse_matches =
-                reverse_myers.find_all_lazy(seq, mismatch);
+            let mut forward_matches = forward_myers.find_all_lazy(seq, mismatch);
+            let mut reverse_matches = reverse_myers.find_all_lazy(seq, mismatch);
 
             // Get the best hit
-            let forward_best_hit =
-                forward_matches.by_ref().min_by_key(|&(_, dist)| dist);
-            let reverse_best_hit =
-                reverse_matches.by_ref().min_by_key(|&(_, dist)| dist);
+            let forward_best_hit = forward_matches.by_ref().min_by_key(|&(_, dist)| dist);
+            let reverse_best_hit = reverse_matches.by_ref().min_by_key(|&(_, dist)| dist);
 
             match forward_best_hit {
                 Some((forward_best_hit_end, _)) => {
                     match reverse_best_hit {
                         Some((reverse_best_hit_end, _)) => {
                             // Get match start position of forward primer
-                            let (forward_start, _) = forward_matches
-                                .hit_at(forward_best_hit_end)
-                                .unwrap();
+                            let (forward_start, _) =
+                                forward_matches.hit_at(forward_best_hit_end).unwrap();
                             // Get match start position of reverse primer
-                            let (reverse_start, _) = reverse_matches
-                                .hit_at(reverse_best_hit_end)
-                                .unwrap();
+                            let (reverse_start, _) =
+                                reverse_matches.hit_at(reverse_best_hit_end).unwrap();
 
                             if !region.is_empty() {
-                                fasta_writer.write_record(
-                                    &fasta::Record::with_attrs(
-                                        record.id(),
-                                        Some(
-                                            format!(
+                                fasta_writer.write_record(&fasta::Record::with_attrs(
+                                    record.id(),
+                                    Some(
+                                        format!(
                                             "region={} forward={} reverse={}",
-                                            region,
-                                            primer_pair[0],
-                                            primer_pair[1]
+                                            region, primer_pair[0], primer_pair[1]
                                         )
-                                            .as_str(),
-                                        ),
-                                        &seq[forward_start
-                                            ..reverse_start
-                                                + primer_pair[1].len()],
+                                        .as_str(),
                                     ),
-                                )?;
+                                    &seq[forward_start..reverse_start + primer_pair[1].len()],
+                                ))?;
                             } else {
-                                fasta_writer.write_record(
-                                    &fasta::Record::with_attrs(
-                                        record.id(),
-                                        Some(
-                                            format!(
-                                                "forward={} reverse={}",
-                                                primer_pair[0], primer_pair[1]
-                                            )
-                                            .as_str(),
-                                        ),
-                                        &seq[forward_start
-                                            ..reverse_start
-                                                + primer_pair[1].len()],
+                                fasta_writer.write_record(&fasta::Record::with_attrs(
+                                    record.id(),
+                                    Some(
+                                        format!(
+                                            "forward={} reverse={}",
+                                            primer_pair[0], primer_pair[1]
+                                        )
+                                        .as_str(),
                                     ),
-                                )?;
+                                    &seq[forward_start..reverse_start + primer_pair[1].len()],
+                                ))?;
                             }
                             // Write region to GFF3 file
                             gff_writer.write_all(format!("{}\thyperex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region {}\n", record.id(), forward_start, reverse_start + primer_pair[1].len(), region).as_bytes())?;
@@ -407,14 +387,16 @@ pub fn get_hypervar_regions(
                         }
                     }
                 }
-                None => match reverse_best_hit {
-                    Some((_, _)) => {
-                        warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[0]);
+                None => {
+                    match reverse_best_hit {
+                        Some((_, _)) => {
+                            warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[0]);
+                        }
+                        None => {
+                            warn!("Region {} not found because primers {}, {} was not found in the sequence", region, primer_pair[0], primer_pair[1])
+                        }
                     }
-                    None => {
-                        warn!("Region {} not found because primers {}, {} was not found in the sequence", region, primer_pair[0], primer_pair[1])
-                    }
-                },
+                }
             }
         }
     }
@@ -556,10 +538,8 @@ mod tests {
 
     #[test]
     fn test_write_fa_ok2() {
-        let mut tmpfile =
-            NamedTempFile::new().expect("Cannot create temp file");
-        writeln!(tmpfile, ">id_str desc\nATCGCCG")
-            .expect("Cannot write to tmp file");
+        let mut tmpfile = NamedTempFile::new().expect("Cannot create temp file");
+        writeln!(tmpfile, ">id_str desc\nATCGCCG").expect("Cannot write to tmp file");
 
         let mut fa_records = fasta::Reader::from_file(tmpfile)
             .expect("Cannot read file.")
@@ -574,8 +554,8 @@ mod tests {
 
     #[test]
     fn test_combine_vec() {
-        let first = vec!["ab", "cd", "ef"];
-        let second = vec!["cd", "ef", "gh"];
+        let first = vec!["ab".to_string(), "cd".to_string(), "ef".to_string()];
+        let second = vec!["cd".to_string(), "ef".to_string(), "gh".to_string()];
         assert_eq!(
             combine_vec(first, second),
             vec![
@@ -588,8 +568,8 @@ mod tests {
 
     #[test]
     fn test_combine_vec_not_ok() {
-        let first = vec!["ab", "cd", "ef"];
-        let second = vec!["ab"];
+        let first = vec!["ab".to_string(), "cd".to_string(), "ef".to_string()];
+        let second = vec!["ab".to_string()];
         assert_ne!(
             combine_vec(first, second),
             vec![

@@ -1,116 +1,115 @@
-// Copyright 2021-2024 Anicet Ebou.
+// Copyright 2021-2025 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use clap::{crate_version, value_parser, Arg, ArgAction, ColorChoice, Command};
+use clap::{Parser, ValueEnum};
 
-pub fn build_app() -> Command {
-    let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
-        ColorChoice::Always
-    } else {
-        ColorChoice::Never
-    };
+#[derive(Parser, Debug)]
+#[command(
+    name = "hyperex",
+    version,
+    author = "Anicet Ebou <anicet.ebou@gmail.com>",
+    about = "Hypervariable region primer-based extractor",
+    override_usage = "hyperex [options] [<FILE>]"
+)]
+pub struct Args {
+    /// Input fasta file or stdin
+    #[arg(
+        long_help = "input fasta file. With no FILE, or when FILE is -, read standard input. Input data can be gzip'd, xz'd or bzip'd"
+    )]
+    pub file: Option<String>,
 
-    Command::new("hyperex")
-        .version(crate_version!())
-        .override_usage(
-            "hyperex [options] [<FILE>]"
-        )
-        .color(clap_color_setting)
-        .after_help(
-            "Note: `hyperex -h` prints a short and concise overview while `hyperex --help` gives all \
-                 details.",
-        )
-        .author("Anicet Ebou, anicet.ebou@gmail.com")
-        .about("Hypervariable region primer-based extractor")
-        .arg(
-            Arg::new("FILE")
-                .help("input fasta file or stdin")
-                .long_help("input fasta file. With no FILE, or when FILE is -, read standard input. Input data can be gzip'd, xz'd or bzip'd")
-                .index(1),
-        )
-        .arg(
-            Arg::new("forward_primer")
-                .short('f')
-                .long("forward-primer")
-                .help("forward primer sequence")
-                .long_help("Specifies forward primer sequence which can contains IUPAC ambiguities")
-                .conflicts_with("region")
-                .requires("reverse_primer")
-                .num_args(1..)
-                .number_of_values(1)
-                .value_name("STR")
-        )
-        .arg(
-            Arg::new("reverse_primer")
-                .short('r')
-                .long("reverse-primer")
-                .help("reverse primer sequence")
-                .long_help("Specifies reverse primer sequence which can contains IUPAC ambiguities")
-                .conflicts_with("region")
-                .num_args(1..)
-                .number_of_values(1)
-                .value_name("STR")
-        )
-        .arg(
-            Arg::new("region")
-                .long("region")
-                .help("hypervariable region name")
-                .long_help(
-                    "Specifies 16S rRNA region name wanted. Supported values are\n\
-                    v1v2, v1v3, v1v9, v3v4, v3v5, v4, v4v5, v5v7, v6v9, v7v9"
-                )
-                .value_parser(clap::builder::PossibleValuesParser::new(["v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9"]))
-                .hide_possible_values(true)
-                .num_args(1..)
-                .number_of_values(1)
-                .value_name("STR")
-        )
-        .arg(
-            Arg::new("mismatch")
-                .help("number of allowed mismatch")
-                .long_help(
-                    "Specifies the number of allowed mismatch. This cannot\n\
-                    be greater than the length of the lengthest primer"
-                )
-                .long("mismatch")
-                .short('m')
-                .value_name("N")
-                .value_parser(value_parser!(u8))
-                .hide_possible_values(true)
-                .default_value("0")
-        )
-        .arg(
-            Arg::new("prefix")
-                .help("prefix of output files")
-                .long_help("Specifies the prefix for output files. Paths are supported")
-                .short('p')
-                .long("prefix")
-                .value_name("PATH")
-                .default_value("hyperex_out"),
-        )
-        .arg(
-            Arg::new("force")
-                .help("overwrite output")
-                .long("force")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("quiet")
-                .long_help("decreases program verbosity")
-                .short('q')
-                .long("quiet")
-                .action(ArgAction::SetTrue),
-        )
+    /// Forward primer sequence
+    #[arg(
+        short = 'f',
+        long = "forward",
+        long_help = "Specifies forward primer sequence which can contains IUPAC ambiguities",
+        conflicts_with = "region",
+        requires = "reverse",
+        value_name = "STR",
+        num_args = 1..
+    )]
+    pub forward: Option<Vec<String>>,
+
+    /// Reverse primer sequence
+    #[arg(
+        short = 'r',
+        long = "reverse",
+        long_help = "Specifies reverse primer sequence which can contains IUPAC ambiguities",
+        conflicts_with = "region",
+        value_name = "STR",
+        num_args = 1..
+    )]
+    pub reverse: Option<Vec<String>>,
+
+    /// Hypervariable region name
+    #[arg(
+        long = "region",
+        long_help = "Specifies 16S rRNA region name wanted. Supported values are\nv1v1, v1v3, v1v9, v3v4, v3v5, v4, v4v5, v5v7, v6v9, v7v9",
+        value_name = "STR",
+        hide_possible_values = true,
+        num_args = 1..
+    )]
+    pub region: Option<Vec<Region>>,
+
+    /// Number of allowed mismatch
+    #[arg(
+        short = 'm',
+        long = "mismatch",
+        long_help = "Specifies the number of allowed mismatch. This cannot\nbe greate than the length of the lengthest primer",
+        value_name = "N",
+        hide_possible_values = true,
+        default_value = "0"
+    )]
+    pub mismatch: u8,
+
+    /// Prefix of output files
+    #[arg(
+        short = 'p',
+        long = "prefix",
+        long_help = "Specifies the prefix for output files. Paths are supported",
+        value_name = "PATH",
+        default_value = "hyperex_out"
+    )]
+    pub prefix: String,
+
+    /// Overwrite output
+    #[arg(long = "force")]
+    pub force: bool,
+
+    /// Decreases program verbosity
+    #[arg(short = 'q', long = "quiet")]
+    pub quiet: bool,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(ValueEnum, Clone, Debug)]
+pub enum Region {
+    V1V2,
+    V1V3,
+    V1V9,
+    V3V4,
+    V3V5,
+    V4,
+    V4V5,
+    V5V7,
+    V6V9,
+    V7V9,
+}
 
-    #[test]
-    fn verify_cmd() {
-        build_app().debug_assert();
+impl ToString for Region {
+    fn to_string(&self) -> String {
+        match self {
+            Region::V1V2 => String::from("v1v2"),
+            Region::V1V3 => String::from("v1v3"),
+            Region::V1V9 => String::from("v1v9"),
+            Region::V3V4 => String::from("v3v4"),
+            Region::V3V5 => String::from("v3v5"),
+            Region::V4 => String::from("v4"),
+            Region::V4V5 => String::from("v4v5"),
+            Region::V5V7 => String::from("v5v7"),
+            Region::V6V9 => String::from("v6v9"),
+            Region::V7V9 => String::from("v7v9"),
+        }
     }
 }
