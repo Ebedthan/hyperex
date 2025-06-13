@@ -1,69 +1,31 @@
-// Copyright 2021-2024 Anicet Ebou.
+// Copyright 2021-2025 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use super::app;
+use super::cli;
 
 use anyhow::{anyhow, Context, Result};
 use bio::io::fasta;
 use bio::pattern_matching::myers::MyersBuilder;
-use fern::colors::ColoredLevelConfig;
+use fern::colors::{Color, ColoredLevelConfig};
 use log::{error, info, warn};
 use phf::phf_map;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
-use std::time::Instant;
+use std::{
+    fs::{self, File, OpenOptions},
+    io::{self, BufWriter, Write},
+    path::{Path, PathBuf},
+    time::{Duration, Instant},
+};
 
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Write};
+// Constants for configuration
+const TEMP_FILE: &str = "infile.fa";
+const SUPPORTED_REGIONS: &[&str] = &[
+    "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9",
+];
+const MIN_SEQ_LENGTH: usize = 1500;
 
-pub fn setup_logging(quiet: bool) -> anyhow::Result<(), fern::InitError> {
-    let colors = ColoredLevelConfig::default();
-    let mut base_config = fern::Dispatch::new();
-
-    base_config = match quiet {
-        // if user required quietness let only output warning messages
-        // or messages more severe than warnings
-        true => base_config.level(log::LevelFilter::Warn),
-        // if quietness is not specified which implies verbosity is allowed
-        // output
-        false => base_config.level(log::LevelFilter::Debug),
-    };
-
-    // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .chain(fern::log_file("hyperex.log")?);
-
-    let stdout_config = fern::Dispatch::new()
-        .format(move |out, message, record| {
-            out.finish(format_args!(
-                "[{}][{}] {}",
-                chrono::Local::now().format("%H:%M:%S"),
-                colors.color(record.level()),
-                message
-            ))
-        })
-        .chain(io::stdout());
-
-    base_config
-        .chain(file_config)
-        .chain(stdout_config)
-        .apply()?;
-
-    Ok(())
-}
-
-// Primers data
+// Primer data using phf maps for fast lookup
 static PRIMER_TO_REGION: phf::Map<&'static str, &'static str> = phf_map! {
     "AGAGTTTGATCMTGGCTCAG" => "v1",
     "CCTACGGGNGGCWGCAG" => "v3",
@@ -103,6 +65,50 @@ static REVERSE_PRIMERS: phf::Map<&'static str, &'static str> = phf_map! {
     "1492Rmod" => "TACGGYTACCTTGTTAYGACTT",
 };
 
+// Improved logging setup with better color configuration
+pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
+    let colors = ColoredLevelConfig::new()
+        .debug(Color::Blue)
+        .info(Color::Green)
+        .warn(Color::Yellow)
+        .error(Color::Red);
+
+    let level_filter = if quiet {
+        log::LevelFilter::Warn
+    } else {
+        log::LevelFilter::Debug
+    };
+
+    fern::Dispatch::new()
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "[{}][{}] {}",
+                chrono::Local::now().format("%H:%M:%S"),
+                colors.color(record.level()),
+                message
+            ))
+        })
+        .level(level_filter)
+        .chain(io::stdout())
+        .chain(
+            fern::Dispatch::new()
+                .format(|out, message, record| {
+                    out.finish(format_args!(
+                        "{}[{}][{}] {}",
+                        chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                        record.target(),
+                        record.level(),
+                        message
+                    ))
+                })
+                .chain(fern::log_file("hyperex.log")?),
+        )
+        .apply()?;
+
+    Ok(())
+}
+
+// Region to primer with compile-time checks
 pub fn region_to_primer(region: &str) -> anyhow::Result<Vec<String>> {
     match region {
         "v1v2" => Ok(vec![
@@ -463,7 +469,7 @@ pub fn handle_output_files(prefix: &str, force: bool, ehandle: &mut io::StderrLo
     Ok(())
 }
 
-pub fn process_primers(cli: &app::Args, ehandle: &mut io::StderrLock) -> Result<Vec<Vec<String>>> {
+pub fn process_primers(cli: &cli::Args, ehandle: &mut io::StderrLock) -> Result<Vec<Vec<String>>> {
     const SUPPORTED_REGIONS: &[&str] = &[
         "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9",
     ];

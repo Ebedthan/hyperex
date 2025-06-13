@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-mod app;
+mod cli;
 mod utils;
 
 use clap::Parser;
@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
     let stderr = io::stderr();
     let mut ehandle = stderr.lock();
 
-    let cli = app::Args::parse();
+    let cli = cli::Args::parse();
     utils::setup_logging(cli.quiet)?;
 
     // Handle input file/STDIN
