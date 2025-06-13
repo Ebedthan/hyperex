@@ -144,15 +144,6 @@ pub fn file_to_vec(filename: &str) -> Result<Vec<Vec<String>>> {
         .collect()
 }
 
-// Vector combination
-pub fn combine_vec(first: Vec<String>, second: Vec<String>) -> Vec<Vec<String>> {
-    first
-        .into_iter()
-        .zip(second)
-        .map(|(f, r)| vec![f, r])
-        .collect()
-}
-
 // File reading
 fn read_file(filename: &str) -> Result<(Box<dyn io::Read>, niffler::compression::Format)> {
     let file =
@@ -365,17 +356,31 @@ pub fn get_hypervar_regions(
     Ok(())
 }
 
-pub fn handle_input(file_arg: &Option<String>, ehandle: &mut io::StderrLock) -> Result<String> {
-    match file_arg {
-        Some(value) if value == "-" => read_stdin_to_temp_file(),
-        Some(value) => {
-            if !Path::new(value).exists() {
-                writeln!(ehandle, "error: No such file or directory. Is the path correct? Do you have permission to read the file?")?;
-                std::process::exit(1);
+pub fn handle_input(
+    file_arg: &Option<String>,
+    ehandle: &mut io::StderrLock,
+) -> Result<String, anyhow::Error> {
+    match file_arg.as_deref() {
+        Some(path_str) => {
+            if path_str == "-" {
+                read_stdin_to_temp_file()
+            } else {
+                let path = Path::new(path_str);
+                if !path.is_file() {
+                    writeln!(
+                    ehandle,
+                    "error: '{}' is not a valid file. Is the path correct? Do you have permission to read it?",
+                    path.display()
+                )?;
+                    std::process::exit(1);
+                }
+                Ok(path_str.to_owned())
             }
-            Ok(value.clone())
         }
-        None => read_stdin_to_temp_file(),
+        None => {
+            println!("here1");
+            read_stdin_to_temp_file()
+        }
     }
 }
 
@@ -420,16 +425,7 @@ pub fn handle_output_files(prefix: &str, force: bool, ehandle: &mut io::StderrLo
 
 pub fn process_primers(cli: &cli::Args, ehandle: &mut io::StderrLock) -> Result<Vec<Vec<String>>> {
     match (&cli.forward, &cli.reverse, &cli.region) {
-        (Some(forward), Some(reverse), None) => {
-            if forward.len() != reverse.len() {
-                writeln!(
-                    ehandle,
-                    "Supplied forward and reverse primers must have the same number of elements"
-                )?;
-                std::process::exit(1);
-            }
-            Ok(combine_vec(forward.clone(), reverse.clone()))
-        }
+        (Some(forward), Some(reverse), None) => Ok(vec![vec![forward.clone(), reverse.clone()]]),
         (None, None, Some(regions)) => {
             if regions.is_empty() {
                 return Ok(SUPPORTED_REGIONS
@@ -643,34 +639,6 @@ mod tests {
             assert_eq!(rec.desc(), Some("desc"));
             assert_eq!(rec.seq(), b"ATCGCCG");
         }
-    }
-
-    #[test]
-    fn test_combine_vec() {
-        let first = vec!["ab".to_string(), "cd".to_string(), "ef".to_string()];
-        let second = vec!["cd".to_string(), "ef".to_string(), "gh".to_string()];
-        assert_eq!(
-            combine_vec(first, second),
-            vec![
-                vec!["ab".to_string(), "cd".to_string()],
-                vec!["cd".to_string(), "ef".to_string()],
-                vec!["ef".to_string(), "gh".to_string()]
-            ]
-        );
-    }
-
-    #[test]
-    fn test_combine_vec_not_ok() {
-        let first = vec!["ab".to_string(), "cd".to_string(), "ef".to_string()];
-        let second = vec!["ab".to_string()];
-        assert_ne!(
-            combine_vec(first, second),
-            vec![
-                vec!["ab".to_string(), "cd".to_string()],
-                vec!["cd".to_string(), "ef".to_string()],
-                vec!["ef".to_string(), "gh".to_string()]
-            ]
-        );
     }
 
     #[test]

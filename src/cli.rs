@@ -27,10 +27,9 @@ pub struct Args {
         long_help = "Specifies forward primer sequence which can contains IUPAC ambiguities",
         conflicts_with = "region",
         requires = "reverse",
-        value_name = "STR",
-        num_args = 1..
+        value_name = "STR"
     )]
-    pub forward: Option<Vec<String>>,
+    pub forward: Option<String>,
 
     /// Reverse primer sequence
     #[arg(
@@ -38,10 +37,9 @@ pub struct Args {
         long = "reverse",
         long_help = "Specifies reverse primer sequence which can contains IUPAC ambiguities",
         conflicts_with = "region",
-        value_name = "STR",
-        num_args = 1..
+        value_name = "STR"
     )]
-    pub reverse: Option<Vec<String>>,
+    pub reverse: Option<String>,
 
     /// Hypervariable region name
     #[arg(

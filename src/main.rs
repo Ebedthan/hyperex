@@ -18,14 +18,16 @@ fn main() -> anyhow::Result<()> {
     let start_time = Instant::now();
     let stderr = io::stderr();
     let mut ehandle = stderr.lock();
-
+    println!("here");
     let cli = cli::Args::parse();
     utils::setup_logging(cli.quiet)?;
 
     // Handle input file/STDIN
+    println!("here");
     let infile = utils::handle_input(&cli.file, &mut ehandle)?;
 
     // Check and handle output files
+    println!("here");
     utils::handle_output_files(&cli.prefix, cli.force, &mut ehandle)?;
 
     // Process primers
