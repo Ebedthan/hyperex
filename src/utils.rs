@@ -3,12 +3,17 @@
 // This file may not be copied, modified, or distributed except according
 // to those terms.
 
-use anyhow::{anyhow, Context};
+use super::app;
+
+use anyhow::{anyhow, Context, Result};
 use bio::io::fasta;
 use bio::pattern_matching::myers::MyersBuilder;
 use fern::colors::ColoredLevelConfig;
 use log::{error, info, warn};
 use phf::phf_map;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+use std::time::Instant;
 
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
@@ -402,6 +407,174 @@ pub fn get_hypervar_regions(
     }
 
     Ok(())
+}
+
+pub fn handle_input(file_arg: &Option<String>, ehandle: &mut io::StderrLock) -> Result<String> {
+    match file_arg {
+        Some(value) if value == "-" => read_stdin_to_temp_file(),
+        Some(value) => {
+            if !Path::new(value).exists() {
+                writeln!(ehandle, "error: No such file or directory. Is the path correct? Do you have permission to read the file?")?;
+                std::process::exit(1);
+            }
+            Ok(value.clone())
+        }
+        None => read_stdin_to_temp_file(),
+    }
+}
+
+pub fn read_stdin_to_temp_file() -> Result<String> {
+    let temp_file = "infile.fa";
+    let mut writer = fasta::Writer::to_file(temp_file)?;
+    let reader = fasta::Reader::new(io::stdin());
+
+    for record in reader.records().flatten() {
+        writer.write_record(&record)?;
+    }
+
+    Ok(temp_file.to_string())
+}
+
+pub fn handle_output_files(prefix: &str, force: bool, ehandle: &mut io::StderrLock) -> Result<()> {
+    let output_files = [
+        PathBuf::from(format!("{}.fa", prefix)),
+        PathBuf::from(format!("{}.gff", prefix)),
+    ];
+
+    if !force {
+        for file in &output_files {
+            if file.exists() {
+                writeln!(
+                    ehandle,
+                    "error: file {} already exists. Please change it using --prefix option or use --force to overwrite it",
+                    file.display()
+                )?;
+                std::process::exit(1);
+            }
+        }
+    } else {
+        for file in &output_files {
+            if file.exists() {
+                fs::remove_file(file)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn process_primers(cli: &app::Args, ehandle: &mut io::StderrLock) -> Result<Vec<Vec<String>>> {
+    const SUPPORTED_REGIONS: &[&str] = &[
+        "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9",
+    ];
+
+    match (&cli.forward, &cli.reverse, &cli.region) {
+        (Some(forward), Some(reverse), None) => {
+            if forward.len() != reverse.len() {
+                writeln!(
+                    ehandle,
+                    "Supplied forward and reverse primers must have the same number of elements"
+                )?;
+                std::process::exit(1);
+            }
+            Ok(combine_vec(forward.clone(), reverse.clone()))
+        }
+        (None, None, Some(regions)) => {
+            if regions.is_empty() {
+                return Ok(SUPPORTED_REGIONS
+                    .iter()
+                    .map(|x| region_to_primer(x).unwrap())
+                    .collect());
+            }
+
+            if Path::new(&regions[0].to_string()).is_file() {
+                file_to_vec(&regions[0].to_string())
+            } else if regions
+                .iter()
+                .all(|x| SUPPORTED_REGIONS.contains(&&x.to_string().as_str()))
+            {
+                Ok(regions
+                    .iter()
+                    .map(|x| region_to_primer(&x.to_string()).unwrap())
+                    .collect())
+            } else {
+                writeln!(
+                    ehandle,
+                    "Supplied region is not a correct file name nor a supported region name"
+                )?;
+                std::process::exit(1);
+            }
+        }
+        _ => {
+            // Default case: use all built-in regions
+            Ok(SUPPORTED_REGIONS
+                .iter()
+                .map(|x| region_to_primer(x).unwrap())
+                .collect())
+        }
+    }
+}
+
+pub fn validate_mismatch(primers: &[Vec<String>], mismatch: u8) -> Result<()> {
+    let max_primer_len = primers
+        .iter()
+        .flatten()
+        .map(|s| s.len())
+        .max()
+        .ok_or_else(|| anyhow::anyhow!("No primer sequences detected"))?;
+
+    if mismatch as usize > max_primer_len {
+        error!(
+            "Supplied mismatch ({}) is greater than length of longest primer ({})",
+            mismatch, max_primer_len
+        );
+        error!("Aborting...");
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+pub fn log_program_info(mismatch: u8, force: bool, prefix: &str) {
+    info!("This is hyperex v0.2");
+    info!("Written by Anicet Ebou");
+    info!("Available at https://github.com/Ebedthan/hyperex.git");
+    info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));
+
+    if mismatch != 0 {
+        warn!(
+            "You have allowed {} mismatch in the primer sequence",
+            mismatch
+        );
+    }
+
+    if force {
+        warn!("Overwriting {}.fa and {}.gff files", prefix, prefix);
+    }
+}
+
+pub fn cleanup_and_log(start_time: Instant) -> Result<()> {
+    if Path::new("infile.fa").exists() {
+        fs::remove_file("infile.fa")?;
+    }
+
+    let duration = start_time.elapsed();
+    log_duration(duration);
+    info!("Enjoy. Share. Come back again!");
+
+    Ok(())
+}
+
+pub fn log_duration(duration: Duration) {
+    let total_ms = duration.as_millis();
+    let (hours, remaining) = (total_ms / 3_600_000, total_ms % 3_600_000);
+    let (minutes, remaining) = (remaining / 60_000, remaining % 60_000);
+    let (seconds, milliseconds) = (remaining / 1_000, remaining % 1_000);
+
+    info!(
+        "Walltime: {}h:{}m:{}s.{}ms",
+        hours, minutes, seconds, milliseconds
+    );
 }
 
 // Tests --------------------------------------------------------------------
