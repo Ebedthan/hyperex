@@ -109,104 +109,72 @@ pub fn setup_logging(quiet: bool) -> Result<(), fern::InitError> {
 }
 
 // Region to primer with compile-time checks
-pub fn region_to_primer(region: &str) -> anyhow::Result<Vec<String>> {
-    match region {
-        "v1v2" => Ok(vec![
-            FORWARD_PRIMERS["27F"].to_string(),
-            REVERSE_PRIMERS["336R"].to_string(),
-        ]),
-        "v1v3" => Ok(vec![
-            FORWARD_PRIMERS["27F"].to_string(),
-            REVERSE_PRIMERS["534R"].to_string(),
-        ]),
-        "v1v9" => Ok(vec![
-            FORWARD_PRIMERS["27F"].to_string(),
-            REVERSE_PRIMERS["1492Rmod"].to_string(),
-        ]),
-        "v3v4" => Ok(vec![
-            FORWARD_PRIMERS["341F"].to_string(),
-            REVERSE_PRIMERS["805R"].to_string(),
-        ]),
-        "v3v5" => Ok(vec![
-            FORWARD_PRIMERS["341F"].to_string(),
-            REVERSE_PRIMERS["926Rb"].to_string(),
-        ]),
-        "v4" => Ok(vec![
-            FORWARD_PRIMERS["515F"].to_string(),
-            REVERSE_PRIMERS["806R"].to_string(),
-        ]),
-        "v4v5" => Ok(vec![
-            FORWARD_PRIMERS["515F-Y"].to_string(),
-            REVERSE_PRIMERS["909-928R"].to_string(),
-        ]),
-        "v5v7" => Ok(vec![
-            FORWARD_PRIMERS["799F"].to_string(),
-            REVERSE_PRIMERS["1193R"].to_string(),
-        ]),
-        "v6v9" => Ok(vec![
-            FORWARD_PRIMERS["928F"].to_string(),
-            REVERSE_PRIMERS["1492Rmod"].to_string(),
-        ]),
-        "v7v9" => Ok(vec![
-            FORWARD_PRIMERS["1100F"].to_string(),
-            REVERSE_PRIMERS["1492Rmod"].to_string(),
-        ]),
-        _ => Ok(vec!["".to_string()]),
-    }
+pub fn region_to_primer(region: &str) -> Result<Vec<String>> {
+    let (f_key, r_key) = match region {
+        "v1v2" => ("27F", "336R"),
+        "v1v3" => ("27F", "534R"),
+        "v1v9" => ("27F", "1492Rmod"),
+        "v3v4" => ("341F", "805R"),
+        "v3v5" => ("341F", "926Rb"),
+        "v4" => ("515F", "806R"),
+        "v4v5" => ("515F-Y", "909-928R"),
+        "v5v7" => ("799F", "1193R"),
+        "v6v9" => ("928F", "1492Rmod"),
+        "v7v9" => ("1100F", "1492Rmod"),
+        _ => return Ok(Vec::new()),
+    };
+
+    Ok(vec![
+        FORWARD_PRIMERS[f_key].to_string(),
+        REVERSE_PRIMERS[r_key].to_string(),
+    ])
 }
 
-pub fn file_to_vec(filename: &str) -> anyhow::Result<Vec<Vec<String>>> {
-    let mut vec: Vec<Vec<String>> = Vec::new();
-    let content = fs::read_to_string(filename)?;
-    for line in content.lines() {
-        if line.contains(',') {
-            vec.push(
-                line.split(',')
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>(),
-            );
-        } else {
-            return Err(anyhow!(
-                "File containing primer sequences is not comma separated"
-            ));
-        }
-    }
-    Ok(vec)
+// File parsing with better error handling
+pub fn file_to_vec(filename: &str) -> Result<Vec<Vec<String>>> {
+    fs::read_to_string(filename)?
+        .lines()
+        .map(|line| {
+            if line.contains(',') {
+                Ok(line.split(',').map(String::from).collect())
+            } else {
+                Err(anyhow!("Primer file must be comma-separated"))
+            }
+        })
+        .collect()
 }
 
+// Vector combination
 pub fn combine_vec(first: Vec<String>, second: Vec<String>) -> Vec<Vec<String>> {
     first
-        .iter()
+        .into_iter()
         .zip(second)
-        .map(|x| vec![x.0.to_string(), x.1.to_string()])
-        .collect::<Vec<Vec<String>>>()
+        .map(|(f, r)| vec![f, r])
+        .collect()
 }
 
-fn read_file(filename: &str) -> anyhow::Result<(Box<dyn io::Read>, niffler::compression::Format)> {
-    let raw_in = Box::new(io::BufReader::new(File::open(filename)?));
-
-    Ok(niffler::get_reader(raw_in)?)
+// File reading
+fn read_file(filename: &str) -> Result<(Box<dyn io::Read>, niffler::compression::Format)> {
+    let file =
+        File::open(filename).with_context(|| format!("Failed to open file: {}", filename))?;
+    let reader = Box::new(io::BufReader::new(file));
+    niffler::get_reader(reader)
+        .with_context(|| format!("Failed to determine compression for: {}", filename))
 }
 
-fn primers_to_region(primers: Vec<String>) -> String {
-    let mut first_part = "";
-    let mut second_part = "";
+// Primer to region mapping
+fn primers_to_region(primers: &[String]) -> String {
+    let first = PRIMER_TO_REGION.get(&primers[0]).unwrap_or(&"");
+    let second = PRIMER_TO_REGION.get(&primers[1]).unwrap_or(&"");
 
-    if PRIMER_TO_REGION.contains_key(&primers[0]) {
-        first_part = PRIMER_TO_REGION[&primers[0]];
-    }
-
-    if PRIMER_TO_REGION.contains_key(&primers[1]) {
-        second_part = PRIMER_TO_REGION[&primers[1]];
-    }
-
-    if first_part == "v4" && second_part == "v4" {
-        first_part.to_string()
+    if *first == "v4" && *second = "v4" {
+        first.to_string()
     } else {
-        format!("{}{}", first_part, second_part)
+        format!("{}{}", first, second)
     }
 }
 
+// Efficient complement generation
 fn to_complement(primer: &str, alphabet: &str) -> String {
     let mut complement = String::new();
 
