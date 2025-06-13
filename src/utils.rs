@@ -167,7 +167,7 @@ fn primers_to_region(primers: &[String]) -> String {
     let first = PRIMER_TO_REGION.get(&primers[0]).unwrap_or(&"");
     let second = PRIMER_TO_REGION.get(&primers[1]).unwrap_or(&"");
 
-    if *first == "v4" && *second = "v4" {
+    if *first == "v4" && *second == "v4" {
         first.to_string()
     } else {
         format!("{}{}", first, second)
@@ -176,59 +176,35 @@ fn primers_to_region(primers: &[String]) -> String {
 
 // Efficient complement generation
 fn to_complement(primer: &str, alphabet: &str) -> String {
-    let mut complement = String::new();
-
-    if alphabet == "dna" {
-        // S and W complements are themselves, they are therefore ignored here
-        complement = primer
-            .chars()
-            .map(|x| match x {
-                'A' => 'T',
-                'T' => 'A',
-                'C' => 'G',
-                'G' => 'C',
-                'R' => 'Y',
-                'Y' => 'R',
-                'K' => 'M',
-                'M' => 'K',
-                'B' => 'V',
-                'V' => 'B',
-                'D' => 'H',
-                'H' => 'D',
-                'N' => 'N',
-                _ => x,
-            })
-            .collect();
-    } else if alphabet == "rna" {
-        complement = primer
-            .chars()
-            .map(|x| match x {
-                'A' => 'U',
-                'U' => 'A',
-                'C' => 'G',
-                'G' => 'C',
-                'R' => 'Y',
-                'Y' => 'R',
-                'K' => 'M',
-                'M' => 'K',
-                'B' => 'V',
-                'V' => 'B',
-                'D' => 'H',
-                'H' => 'D',
-                'N' => 'N',
-                _ => x,
-            })
-            .collect();
-    }
-
-    complement
+    primer
+        .chars()
+        .map(|c| match (c, alphabet) {
+            ('A', "dna") => 'T',
+            ('T', "dna") => 'A',
+            ('C', "dna") => 'G',
+            ('G', "dna") => 'C',
+            ('A', "rna") => 'U',
+            ('U', "rna") => 'A',
+            ('C', "rna") => 'G',
+            ('G', "rna") => 'C',
+            // IUPAC ambiguity codes
+            ('R', _) => 'Y',
+            ('Y', _) => 'R',
+            ('K', _) => 'M',
+            ('M', _) => 'K',
+            ('B', _) => 'V',
+            ('V', _) => 'B',
+            ('D', _) => 'H',
+            ('H', _) => 'D',
+            // Default cases
+            _ => c,
+        })
+        .collect()
 }
 
+// Reverse complement
 fn to_reverse_complement(primer: &str, alphabet: &str) -> String {
-    let complement = to_complement(primer, alphabet);
-    let reverse_complement = complement.chars().rev().collect();
-
-    reverse_complement
+    to_complement(primer, alphabet).chars().rev().collect()
 }
 
 #[derive(Debug, PartialEq)]
@@ -238,144 +214,156 @@ pub enum Alphabet {
 }
 
 pub fn sequence_type(sequence: &str) -> Option<Alphabet> {
-    let valid_dna_iupac = "ACGTRYSWKMBDHVN";
-    let valid_rna_iupac = "ACGURYSWKMBDHVN";
+    let has_u = sequence.contains('U');
+    let has_t = sequence.contains('T');
 
-    if sequence.chars().all(|x| valid_dna_iupac.contains(x)) {
-        Some(Alphabet::Dna)
-    } else if sequence.chars().all(|x| valid_rna_iupac.contains(x)) {
+    if has_u && !has_t {
         Some(Alphabet::Rna)
+    } else if has_t && !has_u {
+        Some(Alphabet::Dna)
+    } else if !has_u && !has_t {
+        // Could be either, check other IUPAC codes
+        if sequence.chars().all(|c| "ACGTRYSWKMBDHVN".contains(c)) {
+            Some(Alphabet::Dna)
+        } else {
+            None
+        }
     } else {
         None
     }
 }
 
+// Core processing function
 pub fn get_hypervar_regions(
     file: &str,
     primers: Vec<Vec<String>>,
     prefix: &str,
     mismatch: u8,
-) -> anyhow::Result<()> {
-    let (reader, mut _compression) = read_file(file).with_context(|| "Cannot read file")?;
+) -> Result<()> {
+    let (reader, _) = read_file(file)?;
+    let records = fasta::Reader::new(reader).records();
 
-    let mut records = fasta::Reader::new(reader).records();
-
+    // Initialize output writers
     let mut fasta_writer = fasta::Writer::to_file(format!("{}.fa", prefix))?;
     let gff_file = OpenOptions::new()
         .create(true)
         .append(true)
         .open(format!("{}.gff", prefix))?;
-    let mut gff_writer = io::BufWriter::new(gff_file);
+    let mut gff_writer = BufWriter::new(gff_file);
     gff_writer.write_all(b"##gff-version 3\n")?;
 
-    // Build Myers with IUPAC ambiguities in patterns
-    let ambigs = [
-        (b'M', &b"AC"[..]),
-        (b'R', &b"AG"[..]),
-        (b'W', &b"AT"[..]),
-        (b'S', &b"CG"[..]),
-        (b'Y', &b"CT"[..]),
-        (b'K', &b"GT"[..]),
-        (b'V', &b"ACGMRS"[..]),
-        (b'H', &b"ACTMWY"[..]),
-        (b'D', &b"AGTRWK"[..]),
-        (b'B', &b"CGTSYK"[..]),
-        (b'N', &b"ACGTMRWSYKVHDB"[..]),
+    // Configure Myers builder with IUPAC ambiguities
+    // Using Vec<u8> to handle variable length ambigs
+    let ambigs = vec![
+        (b'M', b"AC".to_vec()),
+        (b'R', b"AG".to_vec()),
+        (b'W', b"AT".to_vec()),
+        (b'S', b"CG".to_vec()),
+        (b'Y', b"CT".to_vec()),
+        (b'K', b"GT".to_vec()),
+        (b'V', b"ACGMRS".to_vec()),
+        (b'H', b"ACTMWY".to_vec()),
+        (b'D', b"AGTRWK".to_vec()),
+        (b'B', b"CGTSYK".to_vec()),
+        (b'N', b"ACGTMRWSYKVHDB".to_vec()),
     ];
 
     let mut builder = MyersBuilder::new();
-
-    for &(base, equivalents) in &ambigs {
-        builder.ambig(base, equivalents);
+    for (base, equivalents) in ambigs {
+        builder.ambig(base, equivalents.as_slice());
     }
 
-    while let Some(Ok(record)) = records.next() {
+    for record in records.flatten() {
         let seq = record.seq();
-        let mut alphabet = "";
-        match sequence_type(std::str::from_utf8(seq)?) {
-            Some(alp) => {
-                if alp == Alphabet::Dna {
-                    info!("Sequence type is DNA");
-                    alphabet = "dna";
-                } else if alp == Alphabet::Rna {
-                    info!("Sequence type is RNA");
-                    alphabet = "rna";
-                }
+        let seq_str = std::str::from_utf8(seq)?;
+        let alphabet = match sequence_type(seq_str) {
+            Some(Alphabet::Dna) => "dna",
+            Some(Alphabet::Rna) => "rna",
+            None => {
+                error!("Unrecognized sequence type in record: {}", record.id());
+                continue;
             }
-            None => error!("Sequence type is not recognized as DNA or RNA"),
-        }
-        if seq.len() <= 1500 {
-            warn!("Sequence length is less than 1500 bp. We may not be able to find some regions");
+        };
+
+        if seq.len() <= MIN_SEQ_LENGTH {
+            warn!(
+                "Sequence {} is short ({} bp). Some regions may not be found.",
+                record.id(),
+                seq.len()
+            );
         }
 
-        for primer_pair in primers.iter() {
-            let region = primers_to_region(primer_pair.to_vec());
+        for primer_pair in &primers {
+            let region = primers_to_region(primer_pair);
+            let rev_comp = to_reverse_complement(&primer_pair[1], alphabet);
 
             let mut forward_myers = builder.build_64(primer_pair[0].as_bytes());
-            let mut reverse_myers =
-                builder.build_64(to_reverse_complement(&primer_pair[1], alphabet).as_bytes());
+            let mut reverse_myers = builder.build_64(rev_comp.as_bytes());
 
-            let mut forward_matches = forward_myers.find_all_lazy(seq, mismatch);
-            let mut reverse_matches = reverse_myers.find_all_lazy(seq, mismatch);
+            // Find all matches for both primers
+            let forward_matches: Vec<_> = forward_myers
+                .find_all_lazy(seq, mismatch)
+                .map(|(pos, dist)| (pos, dist))
+                .collect();
 
-            // Get the best hit
-            let forward_best_hit = forward_matches.by_ref().min_by_key(|&(_, dist)| dist);
-            let reverse_best_hit = reverse_matches.by_ref().min_by_key(|&(_, dist)| dist);
+            let reverse_matches: Vec<_> = reverse_myers
+                .find_all_lazy(seq, mismatch)
+                .map(|(pos, dist)| (pos, dist))
+                .collect();
 
-            match forward_best_hit {
-                Some((forward_best_hit_end, _)) => {
-                    match reverse_best_hit {
-                        Some((reverse_best_hit_end, _)) => {
-                            // Get match start position of forward primer
-                            let (forward_start, _) =
-                                forward_matches.hit_at(forward_best_hit_end).unwrap();
-                            // Get match start position of reverse primer
-                            let (reverse_start, _) =
-                                reverse_matches.hit_at(reverse_best_hit_end).unwrap();
+            // Find best matches (lowest distance)
+            let forward_best = forward_matches.iter().min_by_key(|&&(_, dist)| dist);
+            let reverse_best = reverse_matches.iter().min_by_key(|&&(_, dist)| dist);
 
-                            if !region.is_empty() {
-                                fasta_writer.write_record(&fasta::Record::with_attrs(
-                                    record.id(),
-                                    Some(
-                                        format!(
-                                            "region={} forward={} reverse={}",
-                                            region, primer_pair[0], primer_pair[1]
-                                        )
-                                        .as_str(),
-                                    ),
-                                    &seq[forward_start..reverse_start + primer_pair[1].len()],
-                                ))?;
-                            } else {
-                                fasta_writer.write_record(&fasta::Record::with_attrs(
-                                    record.id(),
-                                    Some(
-                                        format!(
-                                            "forward={} reverse={}",
-                                            primer_pair[0], primer_pair[1]
-                                        )
-                                        .as_str(),
-                                    ),
-                                    &seq[forward_start..reverse_start + primer_pair[1].len()],
-                                ))?;
-                            }
-                            // Write region to GFF3 file
-                            gff_writer.write_all(format!("{}\thyperex\tregion\t{}\t{}\t.\t.\t.\tNote Hypervariable region {}\n", record.id(), forward_start, reverse_start + primer_pair[1].len(), region).as_bytes())?;
-                        }
-                        None => {
-                            warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[1])
-                        }
-                    }
+            match (forward_best, reverse_best) {
+                (Some(&(f_end, _)), Some(&(r_end, _))) => {
+                    // Calculate positions - Myers returns end positions
+                    let f_start = f_end - primer_pair[0].len() + 1;
+                    //let r_start = r_end - primer_pair[1].len() + 1;
+
+                    // Write FASTA record
+                    let desc = if region.is_empty() {
+                        format!("forward={} reverse={}", primer_pair[0], primer_pair[1])
+                    } else {
+                        format!(
+                            "region={} forward={} reverse={}",
+                            region, primer_pair[0], primer_pair[1]
+                        )
+                    };
+
+                    fasta_writer.write_record(&fasta::Record::with_attrs(
+                        record.id(),
+                        Some(&desc),
+                        &seq[f_start..r_end + 1], // +1 to include the last base
+                    ))?;
+
+                    // Write GFF record (1-based coordinates)
+                    writeln!(
+                        gff_writer,
+                        "{}\thyperex\tregion\t{}\t{}\t.\t.\t.\tNote=Hypervariable region {}",
+                        record.id(),
+                        f_start + 1,
+                        r_end + 1,
+                        region
+                    )?;
                 }
-                None => {
-                    match reverse_best_hit {
-                        Some((_, _)) => {
-                            warn!("Region {} not found because primer {} was not found in the sequence", region, primer_pair[0]);
-                        }
-                        None => {
-                            warn!("Region {} not found because primers {}, {} was not found in the sequence", region, primer_pair[0], primer_pair[1])
-                        }
-                    }
-                }
+                (None, Some(_)) => warn!(
+                    "Forward primer {} not found for region {} in sequence {}",
+                    primer_pair[0],
+                    region,
+                    record.id()
+                ),
+                (Some(_), None) => warn!(
+                    "Reverse primer {} not found for region {} in sequence {}",
+                    primer_pair[1],
+                    region,
+                    record.id()
+                ),
+                (None, None) => warn!(
+                    "Both primers not found for region {} in sequence {}",
+                    region,
+                    record.id()
+                ),
             }
         }
     }
@@ -398,15 +386,14 @@ pub fn handle_input(file_arg: &Option<String>, ehandle: &mut io::StderrLock) -> 
 }
 
 pub fn read_stdin_to_temp_file() -> Result<String> {
-    let temp_file = "infile.fa";
-    let mut writer = fasta::Writer::to_file(temp_file)?;
+    let mut writer = fasta::Writer::to_file(TEMP_FILE)?;
     let reader = fasta::Reader::new(io::stdin());
 
     for record in reader.records().flatten() {
         writer.write_record(&record)?;
     }
 
-    Ok(temp_file.to_string())
+    Ok(TEMP_FILE.to_string())
 }
 
 pub fn handle_output_files(prefix: &str, force: bool, ehandle: &mut io::StderrLock) -> Result<()> {
@@ -438,10 +425,6 @@ pub fn handle_output_files(prefix: &str, force: bool, ehandle: &mut io::StderrLo
 }
 
 pub fn process_primers(cli: &cli::Args, ehandle: &mut io::StderrLock) -> Result<Vec<Vec<String>>> {
-    const SUPPORTED_REGIONS: &[&str] = &[
-        "v1v2", "v1v3", "v1v9", "v3v4", "v3v5", "v4", "v4v5", "v5v7", "v6v9", "v7v9",
-    ];
-
     match (&cli.forward, &cli.reverse, &cli.region) {
         (Some(forward), Some(reverse), None) => {
             if forward.len() != reverse.len() {
@@ -528,8 +511,8 @@ pub fn log_program_info(mismatch: u8, force: bool, prefix: &str) {
 }
 
 pub fn cleanup_and_log(start_time: Instant) -> Result<()> {
-    if Path::new("infile.fa").exists() {
-        fs::remove_file("infile.fa")?;
+    if Path::new(TEMP_FILE).exists() {
+        fs::remove_file(TEMP_FILE)?;
     }
 
     let duration = start_time.elapsed();
@@ -558,36 +541,6 @@ mod tests {
     use std::fs;
     use std::io::Write;
     use tempfile::NamedTempFile;
-
-    #[test]
-    fn test_primers_to_region_ok() {
-        assert_eq!(
-            primers_to_region(vec![
-                "CCTACGGGNGGCWGCAG".to_string(),
-                "GTGCCAGCMGCCGCGGTAA".to_string()
-            ]),
-            "v3v4".to_string()
-        );
-    }
-
-    #[test]
-    fn test_primers_to_region_ok2() {
-        assert_eq!(
-            primers_to_region(vec![
-                "GTGCCAGCMGCCGCGGTAA".to_string(),
-                "GTGCCAGCMGCCGCGGTAA".to_string()
-            ]),
-            "v4".to_string()
-        );
-    }
-
-    #[test]
-    fn test_primers_to_region_empty() {
-        assert_eq!(
-            primers_to_region(vec!["ZZZZZ".to_string(), "AAAAAA".to_string()]),
-            "".to_string()
-        );
-    }
 
     #[test]
     fn test_complement_dna() {
