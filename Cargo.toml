@@ -6,6 +6,7 @@ edition = "2018"
 exclude = ["test/*", ".github/*"]
 description = "Hypervariable region primer-based extracted"
 homepage = "https://github.com/Ebedthan/hyperex"
+repository = "https://github.com/Ebedthan/hyperex"
 readme = "README.md"
 license = "MIT"
 categories = ["command-line-utilities"]
@@ -34,6 +35,11 @@ overflow-checks = false
 lto             = 'thin'
 panic           = 'abort'
 incremental     = false
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
 
 [[bin]]
 name = "hyperex"
