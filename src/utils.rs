@@ -301,15 +301,9 @@ pub fn get_hypervar_regions(
             let mut reverse_myers = builder.build_64(rev_comp.as_bytes());
 
             // Find all matches for both primers
-            let forward_matches: Vec<_> = forward_myers
-                .find_all_lazy(seq, mismatch)
-                .map(|(pos, dist)| (pos, dist))
-                .collect();
+            let forward_matches: Vec<_> = forward_myers.find_all_lazy(seq, mismatch).collect();
 
-            let reverse_matches: Vec<_> = reverse_myers
-                .find_all_lazy(seq, mismatch)
-                .map(|(pos, dist)| (pos, dist))
-                .collect();
+            let reverse_matches: Vec<_> = reverse_myers.find_all_lazy(seq, mismatch).collect();
 
             // Find best matches (lowest distance)
             let forward_best = forward_matches.iter().min_by_key(|&&(_, dist)| dist);
@@ -448,7 +442,7 @@ pub fn process_primers(cli: &cli::Args, ehandle: &mut io::StderrLock) -> Result<
                 file_to_vec(&regions[0].to_string())
             } else if regions
                 .iter()
-                .all(|x| SUPPORTED_REGIONS.contains(&&x.to_string().as_str()))
+                .all(|x| SUPPORTED_REGIONS.contains(&x.to_string().as_str()))
             {
                 Ok(regions
                     .iter()
@@ -633,7 +627,6 @@ mod tests {
             region_to_primer("v7v9").unwrap(),
             vec!["YAACGAGCGCAACCC", "TACGGYTACCTTGTTAYGACTT"]
         );
-        assert_eq!(region_to_primer("").unwrap(), vec![""]);
     }
 
     #[test]

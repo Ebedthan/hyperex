@@ -97,19 +97,19 @@ pub enum Region {
     V7V9,
 }
 
-impl ToString for Region {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Region {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Region::V1V2 => String::from("v1v2"),
-            Region::V1V3 => String::from("v1v3"),
-            Region::V1V9 => String::from("v1v9"),
-            Region::V3V4 => String::from("v3v4"),
-            Region::V3V5 => String::from("v3v5"),
-            Region::V4 => String::from("v4"),
-            Region::V4V5 => String::from("v4v5"),
-            Region::V5V7 => String::from("v5v7"),
-            Region::V6V9 => String::from("v6v9"),
-            Region::V7V9 => String::from("v7v9"),
+            Region::V1V2 => write!(f, "v1v2"),
+            Region::V1V3 => write!(f, "v1v3"),
+            Region::V1V9 => write!(f, "v1v9"),
+            Region::V3V4 => write!(f, "v3v4"),
+            Region::V3V5 => write!(f, "v3v5"),
+            Region::V4 => write!(f, "v4"),
+            Region::V4V5 => write!(f, "v4v5"),
+            Region::V5V7 => write!(f, "v5v7"),
+            Region::V6V9 => write!(f, "v6v9"),
+            Region::V7V9 => write!(f, "v7v9"),
         }
     }
 }
