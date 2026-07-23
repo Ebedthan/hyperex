@@ -4,7 +4,7 @@ version = "0.2.0"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 edition = "2018"
 exclude = ["test/*", ".github/*"]
-description = "Hypervariable region primer-based extracted"
+description = "Hypervariable region primer-based extractor"
 homepage = "https://github.com/Ebedthan/hyperex"
 repository = "https://github.com/Ebedthan/hyperex"
 readme = "README.md"
@@ -25,7 +25,7 @@ phf = { version = "0.11", features = ["macros"] }
 [dev-dependencies]
 tempfile = "3"
 assert_cmd = "2"
-predicates = "1"
+predicates = "3"
 
 
 [profile.release]
