@@ -9,15 +9,18 @@
   <img src="img/hyperex.png" width="300" alt="HyperEx Logo">
 </p>
 
-**HyperEx** (Hypervariable region Extractor) is a high-performance tool for precise extraction of 16S rRNA hypervariable regions using primer-based approaches. Built in Rust for speed and reliability.
+**HyperEx** (Hypervariable region Extractor) is a tool for precise extraction of 16S rRNA hypervariable regions using primer-based approaches. Built in Rust for a fast, dependency-light, single-binary alternative to running a full amplicon pipeline just to trim primers.
+
+> **Project status: maintenance mode.** HyperEx isn't under active feature development. Bug reports and fixes are welcome (PRs included), but no new features are planned. If it does what you need, great — if you need a more actively developed toolkit, consider cutadapt, QIIME2, or mothur.
 
 ## Features ✨
 
-- 🧬 Built-in universal 16S primer sequences
-- 🔍 Supports IUPAC ambiguity codes in primers
+- 🧬 Built-in universal 16S primer sequences for common hypervariable regions (v1v2, v3v4, v4, etc.)
+- 🔍 Supports IUPAC ambiguity codes in primers, matched via approximate (Myers) matching
+- 🎯 Configurable mismatch tolerance
 - 📁 Handles compressed inputs (gzip, xz, bzip2)
 - 📊 Generates both FASTA and GFF3 outputs
-- 🎯 Configurable mismatch tolerance
+- 🔡 Case-insensitive matching, so soft-masked (lowercase) assemblies work as expected
 
 ## Installation 📦
 
@@ -64,8 +67,8 @@ hyperex --region v1v2 --mismatch 2 input.fasta
 
 | Option | Description |
 |--------|-------------|
-| **-f, --forward-primer** |	Forward primer sequence (IUPAC supported) |
-| **-r, --reverse-primer** |	Reverse primer sequence (IUPAC supported) |
+| **-f, --forward** |	Forward primer sequence (IUPAC supported); requires `-r` |
+| **-r, --reverse** |	Reverse primer sequence (IUPAC supported); requires `-f` |
 | **--region** | 	Predefined region (v1v2, v3v4, etc.) or primer file |
 | **-m, --mismatch** |	Allowed mismatches (default: 0) |
 | **-p, --prefix** |	Output file prefix (default: hyperex_out) |
@@ -104,4 +107,4 @@ hyperex -f ATCG -r GGCC -m 1 input.fasta
 
 
 ## Support 🆘
-Found an issue? File it on our Issue Tracker.
+HyperEx is in maintenance mode (see status note above): bug reports and fixes are still welcome, but please don't expect new features. Found an issue? File it on our Issue Tracker.
