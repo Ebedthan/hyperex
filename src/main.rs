@@ -1,4 +1,4 @@
-// Copyright 2021-2025 Anicet Ebou.
+// Copyright 2021-2026 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
@@ -18,16 +18,13 @@ fn main() -> anyhow::Result<()> {
     let start_time = Instant::now();
     let stderr = io::stderr();
     let mut ehandle = stderr.lock();
-    println!("here");
     let cli = cli::Args::parse();
     utils::setup_logging(cli.quiet)?;
 
     // Handle input file/STDIN
-    println!("here");
     let infile = utils::handle_input(&cli.file, &mut ehandle)?;
 
     // Check and handle output files
-    println!("here");
     utils::handle_output_files(&cli.prefix, cli.force, &mut ehandle)?;
 
     // Process primers

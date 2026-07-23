@@ -15,7 +15,6 @@
 
 - 🧬 Built-in universal 16S primer sequences
 - 🔍 Supports IUPAC ambiguity codes in primers
-- ⚡ Multi-threaded processing for large datasets
 - 📁 Handles compressed inputs (gzip, xz, bzip2)
 - 📊 Generates both FASTA and GFF3 outputs
 - 🎯 Configurable mismatch tolerance

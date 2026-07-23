@@ -1,4 +1,4 @@
-// Copyright 2021-2025 Anicet Ebou.
+// Copyright 2021-2026 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
@@ -205,8 +205,11 @@ pub enum Alphabet {
 }
 
 pub fn sequence_type(sequence: &str) -> Option<Alphabet> {
-    let has_u = sequence.contains('U');
-    let has_t = sequence.contains('T');
+    // Soft-masked (lowercase) FASTA is common in assemblies; normalize case
+    // so classification doesn't depend on it.
+    let upper = sequence.to_ascii_uppercase();
+    let has_u = upper.contains('U');
+    let has_t = upper.contains('T');
 
     if has_u && !has_t {
         Some(Alphabet::Rna)
@@ -214,7 +217,7 @@ pub fn sequence_type(sequence: &str) -> Option<Alphabet> {
         Some(Alphabet::Dna)
     } else if !has_u && !has_t {
         // Could be either, check other IUPAC codes
-        if sequence.chars().all(|c| "ACGTRYSWKMBDHVN".contains(c)) {
+        if upper.chars().all(|c| "ACGTRYSWKMBDHVN".contains(c)) {
             Some(Alphabet::Dna)
         } else {
             None
@@ -284,6 +287,13 @@ pub fn get_hypervar_regions(
             );
         }
 
+        // Soft-masked (lowercase) regions are common in genome assemblies.
+        // The Myers builder's IUPAC ambiguity codes are registered as
+        // uppercase bytes, so matching must run against an uppercased copy
+        // of the sequence. The original `seq` (with its original casing)
+        // is still what gets written to the output FASTA/GFF below.
+        let seq_upper = seq.to_ascii_uppercase();
+
         for primer_pair in &primers {
             let region = primers_to_region(primer_pair);
             let rev_comp = to_reverse_complement(&primer_pair[1], alphabet);
@@ -292,20 +302,56 @@ pub fn get_hypervar_regions(
             let mut reverse_myers = builder.build_64(rev_comp.as_bytes());
 
             // Find all matches for both primers
-            let forward_matches: Vec<_> = forward_myers.find_all_lazy(seq, mismatch).collect();
+            let forward_matches: Vec<_> =
+                forward_myers.find_all_lazy(&seq_upper, mismatch).collect();
 
-            let reverse_matches: Vec<_> = reverse_myers.find_all_lazy(seq, mismatch).collect();
+            let reverse_matches: Vec<_> =
+                reverse_myers.find_all_lazy(&seq_upper, mismatch).collect();
 
             // Find best matches (lowest distance)
             let forward_best = forward_matches.iter().min_by_key(|&&(_, dist)| dist);
             let reverse_best = reverse_matches.iter().min_by_key(|&&(_, dist)| dist);
 
-            match (forward_best, reverse_best) {
-                (Some(&(f_end, _)), Some(&(r_end, _))) => {
-                    // Calculate positions - Myers returns end positions
-                    let f_start = f_end - primer_pair[0].len() + 1;
-                    //let r_start = r_end - primer_pair[1].len() + 1;
+            // Pairing forward_best/reverse_best independently (as before) is
+            // unsafe: on sequences with repeated/multi-copy primer sites
+            // (e.g. multiple rRNA operons in one contig), the globally best
+            // forward hit and globally best reverse hit are not guaranteed
+            // to be in the right order. That produced either a `usize`
+            // underflow computing f_start, or an invalid/reversed slice
+            // range passed to `seq[..]`, both of which panic.
+            //
+            // Instead, only consider (forward, reverse) pairs where the
+            // reverse match genuinely ends after the forward match, and
+            // pick the pair with the lowest combined edit distance among
+            // those.
+            let forward_len = primer_pair[0].len();
+            let mut best_pair: Option<(usize, usize, u8)> = None; // (f_start, r_end, combined_dist)
 
+            for &(f_end, f_dist) in &forward_matches {
+                // f_end is the 0-based end position Myers returns; skip any
+                // match too close to the sequence start to have a valid
+                // start position (should be rare, but never underflow).
+                let f_start = match f_end.checked_sub(forward_len.saturating_sub(1)) {
+                    Some(v) => v,
+                    None => continue,
+                };
+                for &(r_end, r_dist) in &reverse_matches {
+                    if r_end <= f_end {
+                        continue; // reverse hit isn't downstream of forward hit
+                    }
+                    let combined = f_dist.saturating_add(r_dist);
+                    let is_better = match best_pair {
+                        Some((_, _, best_dist)) => combined < best_dist,
+                        None => true,
+                    };
+                    if is_better {
+                        best_pair = Some((f_start, r_end, combined));
+                    }
+                }
+            }
+
+            match (forward_best, reverse_best, best_pair) {
+                (Some(_), Some(_), Some((f_start, r_end, _))) => {
                     // Write FASTA record
                     let desc = if region.is_empty() {
                         format!("forward={} reverse={}", primer_pair[0], primer_pair[1])
@@ -323,28 +369,39 @@ pub fn get_hypervar_regions(
                     ))?;
 
                     // Write GFF record (1-based coordinates)
+                    let note = if region.is_empty() {
+                        format!("forward={} reverse={}", primer_pair[0], primer_pair[1])
+                    } else {
+                        format!("Hypervariable region {}", region)
+                    };
+
                     writeln!(
                         gff_writer,
-                        "{}\thyperex\tregion\t{}\t{}\t.\t.\t.\tNote=Hypervariable region {}",
+                        "{}\thyperex\tregion\t{}\t{}\t.\t.\t.\tNote={}",
                         record.id(),
                         f_start + 1,
                         r_end + 1,
-                        region
+                        note
                     )?;
                 }
-                (None, Some(_)) => warn!(
+                (Some(_), Some(_), None) => warn!(
+                    "Forward and reverse primers for region {} were both found in sequence {}, but not in a valid order/orientation to define a region",
+                    region,
+                    record.id()
+                ),
+                (None, Some(_), _) => warn!(
                     "Forward primer {} not found for region {} in sequence {}",
                     primer_pair[0],
                     region,
                     record.id()
                 ),
-                (Some(_), None) => warn!(
+                (Some(_), None, _) => warn!(
                     "Reverse primer {} not found for region {} in sequence {}",
                     primer_pair[1],
                     region,
                     record.id()
                 ),
-                (None, None) => warn!(
+                (None, None, _) => warn!(
                     "Both primers not found for region {} in sequence {}",
                     region,
                     record.id()
@@ -483,7 +540,7 @@ pub fn validate_mismatch(primers: &[Vec<String>], mismatch: u8) -> Result<()> {
 }
 
 pub fn log_program_info(mismatch: u8, force: bool, prefix: &str) {
-    info!("This is hyperex v0.2");
+    info!("This is hyperex v{}", env!("CARGO_PKG_VERSION"));
     info!("Written by Anicet Ebou");
     info!("Available at https://github.com/Ebedthan/hyperex.git");
     info!("Localtime is {}", chrono::Local::now().format("%H:%M:%S"));

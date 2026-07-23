@@ -1,4 +1,4 @@
-// Copyright 2021-2025 Anicet Ebou.
+// Copyright 2021-2026 Anicet Ebou.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed except according
 // to those terms.
@@ -37,6 +37,7 @@ pub struct Args {
         long = "reverse",
         long_help = "Specifies reverse primer sequence which can contains IUPAC ambiguities",
         conflicts_with = "region",
+        requires = "forward",
         value_name = "STR"
     )]
     pub reverse: Option<String>,
@@ -44,7 +45,7 @@ pub struct Args {
     /// Hypervariable region name
     #[arg(
         long = "region",
-        long_help = "Specifies 16S rRNA region name wanted. Supported values are\nv1v1, v1v3, v1v9, v3v4, v3v5, v4, v4v5, v5v7, v6v9, v7v9",
+        long_help = "Specifies 16S rRNA region name wanted. Supported values are\nv1v2, v1v3, v1v9, v3v4, v3v5, v4, v4v5, v5v7, v6v9, v7v9",
         value_name = "STR",
         hide_possible_values = true,
         num_args = 1..
